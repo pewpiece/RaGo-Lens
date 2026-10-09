@@ -46,7 +46,8 @@ export class CutoutError extends Error {
   }
 }
 
-export const isCancelled = (e: unknown): boolean => e instanceof CutoutError && e.code === 'cancelled';
+export const isCancelled = (e: unknown): boolean =>
+  e instanceof CutoutError && e.code === 'cancelled';
 
 export function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new CutoutError('cancelled', 'Cancelled');
@@ -63,8 +64,18 @@ export function toCutoutError(e: unknown): CutoutError {
       e,
     );
   }
-  if (/decode|unreadable|unsupported image|no such file|not found|ENOENT|could not load/i.test(msg)) {
-    return new CutoutError('unreadable-image', 'That image could not be read. Try another photo.', e);
+  if (
+    /decode|unreadable|unsupported image|no such file|not found|ENOENT|could not load/i.test(msg)
+  ) {
+    return new CutoutError(
+      'unreadable-image',
+      'That image could not be read. Try another photo.',
+      e,
+    );
   }
-  return new CutoutError('inference-failed', 'Something went wrong while removing the background.', e);
+  return new CutoutError(
+    'inference-failed',
+    'Something went wrong while removing the background.',
+    e,
+  );
 }

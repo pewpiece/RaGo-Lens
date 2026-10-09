@@ -1,12 +1,13 @@
 /**
  * @jest-environment <rootDir>/node_modules/@shopify/react-native-skia/jestEnv.js
  */
-import '@shopify/react-native-skia/jestSetup';
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { MockEngine } from '@/engine/mockEngine';
 import { runCutout, type PipelineDeps } from '@/engine/pipeline';
 import { applyMaskLayer, imageFromBytes, readAlpha } from '@/engine/skiaOps';
 import { CutoutError } from '@/engine/types';
+
+jest.mock('@shopify/react-native-skia', () => require('@/testing/skiaReal').skiaReal());
 
 const solid = (w: number, h: number) => {
   const px = new Uint8Array(w * h * 4).fill(200);
@@ -43,7 +44,12 @@ describe('runCutout (real Skia + MockEngine)', () => {
     const { d, persisted } = deps();
     const stages: string[] = [];
     const r = await runCutout(
-      { uri: 'file:///p.jpg', cap: 400, engine: new MockEngine({ maskSize: 64 }), onProgress: (_, l) => stages.push(l) },
+      {
+        uri: 'file:///p.jpg',
+        cap: 400,
+        engine: new MockEngine({ maskSize: 64 }),
+        onProgress: (_, l) => stages.push(l),
+      },
       d,
     );
     expect([r.width, r.height]).toEqual([400, 300]);
@@ -57,7 +63,9 @@ describe('runCutout (real Skia + MockEngine)', () => {
     expect(a[r.width * r.height - 1]).toBe(0);
     expect(a[150 * r.width + 200]).toBe(255);
     // persisted mask PNG decodes to the same alpha
-    expect(Array.from(readAlpha(imageFromBytes(persisted[0]!))).slice(0, 50)).toEqual(Array.from(readAlpha(r.maskLayer)).slice(0, 50));
+    expect(Array.from(readAlpha(imageFromBytes(persisted[0]!))).slice(0, 50)).toEqual(
+      Array.from(readAlpha(r.maskLayer)).slice(0, 50),
+    );
     expect(stages[0]).toBe('Reading photo');
   });
 
@@ -70,7 +78,10 @@ describe('runCutout (real Skia + MockEngine)', () => {
   it('is cancellable mid-flight', async () => {
     const { d } = deps();
     const c = new AbortController();
-    const p = runCutout({ uri: 'u', cap: 400, engine: new MockEngine({ delayMs: 80 }), signal: c.signal }, d);
+    const p = runCutout(
+      { uri: 'u', cap: 400, engine: new MockEngine({ delayMs: 80 }), signal: c.signal },
+      d,
+    );
     setTimeout(() => c.abort(), 10);
     await expect(p).rejects.toMatchObject({ code: 'cancelled' });
   });
@@ -78,14 +89,19 @@ describe('runCutout (real Skia + MockEngine)', () => {
   it('maps engine and decode failures to friendly CutoutErrors', async () => {
     const { d } = deps();
     await expect(
-      runCutout({ uri: 'u', cap: 400, engine: new MockEngine({ failWith: new Error('OutOfMemoryError') }) }, d),
+      runCutout(
+        { uri: 'u', cap: 400, engine: new MockEngine({ failWith: new Error('OutOfMemoryError') }) },
+        d,
+      ),
     ).rejects.toMatchObject({ code: 'out-of-memory' });
     const { d: bad } = deps({
       loadImage: async () => {
         throw new Error('Could not load image');
       },
     });
-    await expect(runCutout({ uri: 'u', cap: 400, engine: new MockEngine() }, bad)).rejects.toMatchObject({
+    await expect(
+      runCutout({ uri: 'u', cap: 400, engine: new MockEngine() }, bad),
+    ).rejects.toMatchObject({
       code: 'unreadable-image',
     });
     const { d: missing } = deps({
@@ -93,13 +109,19 @@ describe('runCutout (real Skia + MockEngine)', () => {
         throw new CutoutError('model-missing', 'x');
       },
     });
-    await expect(runCutout({ uri: 'u', cap: 400, engine: new MockEngine() }, missing)).rejects.toMatchObject({
+    await expect(
+      runCutout({ uri: 'u', cap: 400, engine: new MockEngine() }, missing),
+    ).rejects.toMatchObject({
       code: 'model-missing',
     });
   });
 
   it('flags when nothing was found', async () => {
-    const empty = { id: 'empty', label: 'e', segment: async () => ({ alpha: new Uint8Array(16), width: 4, height: 4 }) };
+    const empty = {
+      id: 'empty',
+      label: 'e',
+      segment: async () => ({ alpha: new Uint8Array(16), width: 4, height: 4 }),
+    };
     const { d } = deps();
     const r = await runCutout({ uri: 'u', cap: 400, engine: empty }, d);
     expect(r.foundObject).toBe(false);

@@ -1,4 +1,10 @@
-import { throwIfAborted, type EngineInput, type EngineRunOptions, type ImageEngine, type MaskResult } from './types';
+import {
+  throwIfAborted,
+  type EngineInput,
+  type EngineRunOptions,
+  type ImageEngine,
+  type MaskResult,
+} from './types';
 
 export interface MockEngineOptions {
   /** Longest side of the generated mask. */
@@ -45,7 +51,10 @@ export class MockEngine implements ImageEngine {
     throwIfAborted(signal);
     const size = this.opts.maskSize ?? 256;
     const scale = size / Math.max(input.width, input.height);
-    const mask = ellipseMask(Math.max(2, Math.round(input.width * scale)), Math.max(2, Math.round(input.height * scale)));
+    const mask = ellipseMask(
+      Math.max(2, Math.round(input.width * scale)),
+      Math.max(2, Math.round(input.height * scale)),
+    );
     onProgress?.(1, 'Done');
     return mask;
   }

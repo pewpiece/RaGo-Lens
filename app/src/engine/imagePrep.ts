@@ -11,7 +11,11 @@ export function capScale(width: number, height: number, cap: number): number {
   return long > cap ? cap / long : 1;
 }
 
-export function cappedSize(width: number, height: number, cap: number): { width: number; height: number } {
+export function cappedSize(
+  width: number,
+  height: number,
+  cap: number,
+): { width: number; height: number } {
   const s = capScale(width, height, cap);
   return { width: Math.max(1, Math.round(width * s)), height: Math.max(1, Math.round(height * s)) };
 }
@@ -29,7 +33,11 @@ export interface PrepDeps {
  * Loads the picked/shared/captured photo into a working JPEG: upright, long edge <= cap.
  * Capping early keeps decode memory bounded on low-end phones (a 12 MP photo is never held at full size by us).
  */
-export async function prepareWorkingImage(uri: string, cap: number, deps: PrepDeps): Promise<PreparedImage> {
+export async function prepareWorkingImage(
+  uri: string,
+  cap: number,
+  deps: PrepDeps,
+): Promise<PreparedImage> {
   let size: { width: number; height: number } | null = null;
   try {
     size = await deps.getSize(uri);
@@ -46,7 +54,10 @@ export async function prepareWorkingImage(uri: string, cap: number, deps: PrepDe
   // Unknown size: normalise first, then shrink if needed.
   const first = await deps.manipulate(uri, null);
   if (capScale(first.width, first.height, cap) < 1) {
-    return deps.manipulate(first.uri, first.width >= first.height ? { width: cap } : { height: cap });
+    return deps.manipulate(
+      first.uri,
+      first.width >= first.height ? { width: cap } : { height: cap },
+    );
   }
   return first;
 }

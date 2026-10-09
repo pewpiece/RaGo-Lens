@@ -61,7 +61,10 @@ export const lightTokens: ThemeTokens = {
 export const tokensFor = (scheme: ThemeScheme): ThemeTokens =>
   scheme === 'dark' ? darkTokens : lightTokens;
 
-export function resolveScheme(mode: ThemeMode, system: ThemeScheme | null | undefined): ThemeScheme {
+export function resolveScheme(
+  mode: ThemeMode,
+  system: ThemeScheme | null | undefined,
+): ThemeScheme {
   if (mode === 'light' || mode === 'dark') return mode;
   return system === 'light' ? 'light' : 'dark';
 }

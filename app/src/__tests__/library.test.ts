@@ -1,4 +1,9 @@
-import { assertStorage, estimatePngBytes, LowStorageError, STORAGE_HEADROOM } from '@/library/library';
+import {
+  assertStorage,
+  estimatePngBytes,
+  LowStorageError,
+  STORAGE_HEADROOM,
+} from '@/library/library';
 
 jest.mock('expo-file-system', () => ({}));
 jest.mock('@/db/client', () => ({ getDb: jest.fn() }));

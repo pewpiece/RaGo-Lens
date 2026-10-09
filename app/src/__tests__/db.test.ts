@@ -10,7 +10,7 @@ async function makeDb() {
   const raw = new SQL.Database();
   const adapter: MigratableDb = {
     execSync: (sql) => raw.run(sql),
-    getFirstSync: <T,>(sql: string) => {
+    getFirstSync: <T>(sql: string) => {
       const res = raw.exec(sql)[0];
       if (!res) return null;
       const obj: Record<string, unknown> = {};
@@ -38,12 +38,13 @@ describe('migrations', () => {
   it('creates the schema and sets user_version', async () => {
     const { adapter, raw } = await makeDb();
     expect(runMigrations(adapter)).toBe(MIGRATIONS.length);
-    const tables = raw.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")[0]!
+    const tables = raw
+      .exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")[0]!
       .values.flat();
     expect(tables).toEqual(expect.arrayContaining(['results', 'settings']));
-    expect(adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(
-      MIGRATIONS.length,
-    );
+    expect(
+      adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version,
+    ).toBe(MIGRATIONS.length);
   });
 
   it('is idempotent and applies only pending migrations', async () => {
@@ -53,7 +54,9 @@ describe('migrations', () => {
     runMigrations(adapter);
     const extra = [...MIGRATIONS, 'ALTER TABLE results ADD COLUMN note TEXT;'];
     runMigrations(adapter, extra);
-    expect(adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(2);
+    expect(
+      adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version,
+    ).toBe(2);
     expect(raw.exec('SELECT value FROM settings')[0]!.values[0]![0]).toBe('1');
   });
 
@@ -61,9 +64,9 @@ describe('migrations', () => {
     const { adapter } = await makeDb();
     runMigrations(adapter);
     expect(() => runMigrations(adapter, [...MIGRATIONS, 'THIS IS NOT SQL'])).toThrow();
-    expect(adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(
-      MIGRATIONS.length,
-    );
+    expect(
+      adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version,
+    ).toBe(MIGRATIONS.length);
   });
 
   it('refuses a database from a newer app version', async () => {

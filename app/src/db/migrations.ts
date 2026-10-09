@@ -28,11 +28,16 @@ export interface MigratableDb {
   getFirstSync<T>(sql: string): T | null;
 }
 
-export function runMigrations(db: MigratableDb, migrations: readonly string[] = MIGRATIONS): number {
+export function runMigrations(
+  db: MigratableDb,
+  migrations: readonly string[] = MIGRATIONS,
+): number {
   const row = db.getFirstSync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
   if (current > migrations.length) {
-    throw new Error(`Database is newer (v${current}) than this app understands (v${migrations.length}).`);
+    throw new Error(
+      `Database is newer (v${current}) than this app understands (v${migrations.length}).`,
+    );
   }
   for (let v = current; v < migrations.length; v++) {
     db.execSync('BEGIN');

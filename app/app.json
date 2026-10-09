@@ -16,9 +16,7 @@
         "backgroundColor": "#0E1116"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.CAMERA"
-      ],
+      "permissions": ["android.permission.CAMERA"],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -76,9 +74,7 @@
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": [
-            "image/*"
-          ]
+          "androidIntentFilters": ["image/*"]
         }
       ],
       "onnxruntime-react-native"

@@ -62,7 +62,13 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
     onProgress?.(0.82, 'Sharpening edges');
     const original = await deps.loadImage(prepared.uri);
     throwIfAborted(signal);
-    const maskLayer = maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height);
+    const maskLayer = maskLayerFromAlpha(
+      mask.alpha,
+      mask.width,
+      mask.height,
+      prepared.width,
+      prepared.height,
+    );
     throwIfAborted(signal);
 
     onProgress?.(0.95, 'Saving');

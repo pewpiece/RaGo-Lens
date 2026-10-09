@@ -85,7 +85,13 @@ export function alpha8Image(alpha: Uint8Array, w: number, h: number): SkImage {
  * Upscales a small coverage mask to w x h (bilinear, soft edges) and returns it as a white RGBA layer whose
  * alpha channel is the mask. This "mask layer" is what refine edits and what gets composited at export.
  */
-export function maskLayerFromAlpha(alpha: Uint8Array, mw: number, mh: number, w: number, h: number): SkImage {
+export function maskLayerFromAlpha(
+  alpha: Uint8Array,
+  mw: number,
+  mh: number,
+  w: number,
+  h: number,
+): SkImage {
   const small = alpha8Image(alpha, mw, mh);
   const surface = Skia.Surface.Make(w, h);
   if (!surface) throw new Error('Out of memory: could not allocate mask surface');
@@ -101,14 +107,16 @@ export function maskLayerFromAlpha(alpha: Uint8Array, mw: number, mh: number, w:
     ch = Math.min(h, ch * 2);
     const hop = Skia.Surface.Make(cw, ch);
     if (!hop) throw new Error('Out of memory: could not allocate mask surface');
-    hop.getCanvas().drawImageRectOptions(
-      cur,
-      Skia.XYWHRect(0, 0, cur.width(), cur.height()),
-      Skia.XYWHRect(0, 0, cw, ch),
-      FilterMode.Linear,
-      MipmapMode.None,
-      paint,
-    );
+    hop
+      .getCanvas()
+      .drawImageRectOptions(
+        cur,
+        Skia.XYWHRect(0, 0, cur.width(), cur.height()),
+        Skia.XYWHRect(0, 0, cw, ch),
+        FilterMode.Linear,
+        MipmapMode.None,
+        paint,
+      );
     cur = hop.makeImageSnapshot();
   }
   canvas.drawImageRectOptions(
@@ -124,7 +132,12 @@ export function maskLayerFromAlpha(alpha: Uint8Array, mw: number, mh: number, w:
 }
 
 /** Applies a mask layer (its alpha channel) to an image: out = image with alpha multiplied by the mask. */
-export function applyMaskLayer(original: SkImage, maskLayer: SkImage, w: number, h: number): SkImage {
+export function applyMaskLayer(
+  original: SkImage,
+  maskLayer: SkImage,
+  w: number,
+  h: number,
+): SkImage {
   const surface = Skia.Surface.Make(w, h);
   if (!surface) throw new Error('Out of memory: could not allocate output surface');
   const canvas = surface.getCanvas();

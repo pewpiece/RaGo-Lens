@@ -1,7 +1,10 @@
 import { OnnxSegmentationEngine, type OrtLike, type OrtSessionLike } from '@/engine/onnxEngine';
 import { CutoutError } from '@/engine/types';
 
-function fakeOrt(outputFn: (feed: Record<string, { dims: number[]; data: Float32Array }>) => Float32Array, opts: { createFails?: boolean } = {}) {
+function fakeOrt(
+  outputFn: (feed: Record<string, { dims: number[]; data: Float32Array }>) => Float32Array,
+  opts: { createFails?: boolean } = {},
+) {
   const calls = { create: 0, run: 0, release: 0, lastFeed: undefined as unknown };
   const session: OrtSessionLike = {
     inputNames: ['input.1'],
@@ -25,7 +28,11 @@ function fakeOrt(outputFn: (feed: Record<string, { dims: number[]; data: Float32
       },
     },
     Tensor: class {
-      constructor(public type: string, public data: Float32Array, public dims: number[]) {}
+      constructor(
+        public type: string,
+        public data: Float32Array,
+        public dims: number[],
+      ) {}
     } as never,
   };
   return { ort, calls };
@@ -44,10 +51,16 @@ const squareOutput = () => {
 describe('OnnxSegmentationEngine', () => {
   it('feeds a [1,3,320,320] float tensor under the model input name and post-processes the first output', async () => {
     const { ort, calls } = fakeOrt(squareOutput);
-    const engine = new OnnxSegmentationEngine({ ort, modelPath: async () => '/m.onnx', sampleRgba: grey });
+    const engine = new OnnxSegmentationEngine({
+      ort,
+      modelPath: async () => '/m.onnx',
+      sampleRgba: grey,
+    });
     const progress: number[] = [];
     const mask = await engine.segment(input, { onProgress: (f) => progress.push(f) });
-    const feed = (calls.lastFeed as Record<string, { dims: number[]; data: Float32Array; type: string }>)['input.1']!;
+    const feed = (
+      calls.lastFeed as Record<string, { dims: number[]; data: Float32Array; type: string }>
+    )['input.1']!;
     expect(feed.dims).toEqual([1, 3, 320, 320]);
     expect(feed.type).toBe('float32');
     expect(feed.data).toHaveLength(3 * 320 * 320);
@@ -60,7 +73,11 @@ describe('OnnxSegmentationEngine', () => {
 
   it('creates the session once and reuses it', async () => {
     const { ort, calls } = fakeOrt(squareOutput);
-    const engine = new OnnxSegmentationEngine({ ort, modelPath: async () => '/m.onnx', sampleRgba: grey });
+    const engine = new OnnxSegmentationEngine({
+      ort,
+      modelPath: async () => '/m.onnx',
+      sampleRgba: grey,
+    });
     await engine.segment(input);
     await engine.segment(input);
     expect(calls.create).toBe(1);
@@ -87,7 +104,11 @@ describe('OnnxSegmentationEngine', () => {
 
   it('maps a session load failure to model-load-failed', async () => {
     const { ort } = fakeOrt(squareOutput, { createFails: true });
-    const engine = new OnnxSegmentationEngine({ ort, modelPath: async () => '/m.onnx', sampleRgba: grey });
+    const engine = new OnnxSegmentationEngine({
+      ort,
+      modelPath: async () => '/m.onnx',
+      sampleRgba: grey,
+    });
     await expect(engine.segment(input)).rejects.toMatchObject({ code: 'model-load-failed' });
   });
 
@@ -95,13 +116,21 @@ describe('OnnxSegmentationEngine', () => {
     const { ort } = fakeOrt(() => {
       throw new Error('java.lang.OutOfMemoryError: Failed to allocate');
     });
-    const engine = new OnnxSegmentationEngine({ ort, modelPath: async () => '/m.onnx', sampleRgba: grey });
+    const engine = new OnnxSegmentationEngine({
+      ort,
+      modelPath: async () => '/m.onnx',
+      sampleRgba: grey,
+    });
     await expect(engine.segment(input)).rejects.toMatchObject({ code: 'out-of-memory' });
   });
 
   it('rejects an output of the wrong size', async () => {
     const { ort } = fakeOrt(() => new Float32Array(10));
-    const engine = new OnnxSegmentationEngine({ ort, modelPath: async () => '/m.onnx', sampleRgba: grey });
+    const engine = new OnnxSegmentationEngine({
+      ort,
+      modelPath: async () => '/m.onnx',
+      sampleRgba: grey,
+    });
     await expect(engine.segment(input)).rejects.toMatchObject({ code: 'inference-failed' });
   });
 
@@ -116,6 +145,8 @@ describe('OnnxSegmentationEngine', () => {
         return grey(i, s);
       },
     });
-    await expect(engine.segment(input, { signal: c.signal })).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(engine.segment(input, { signal: c.signal })).rejects.toMatchObject({
+      code: 'cancelled',
+    });
   });
 });

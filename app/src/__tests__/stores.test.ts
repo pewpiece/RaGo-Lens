@@ -66,7 +66,11 @@ describe('settings store', () => {
     await a.getState().setUseMockEngine(true);
     const b = createSettingsStore(kv);
     await b.getState().hydrate();
-    expect(b.getState().exportDefaults).toMatchObject({ background: 'white', size: 1024, autoCrop: true });
+    expect(b.getState().exportDefaults).toMatchObject({
+      background: 'white',
+      size: 1024,
+      autoCrop: true,
+    });
     expect(b.getState().workingSizeCap).toBe(1536);
     expect(b.getState().useMockEngine).toBe(true);
   });
@@ -82,8 +86,8 @@ describe('parseExportOptions', () => {
   it('falls back to defaults for invalid JSON and bad fields', () => {
     expect(parseExportOptions('nope')).toEqual(DEFAULT_EXPORT_OPTIONS);
     expect(parseExportOptions(null)).toEqual(DEFAULT_EXPORT_OPTIONS);
-    expect(parseExportOptions(JSON.stringify({ background: 'plaid', size: 5, color: 'red' }))).toEqual(
-      DEFAULT_EXPORT_OPTIONS,
-    );
+    expect(
+      parseExportOptions(JSON.stringify({ background: 'plaid', size: 5, color: 'red' })),
+    ).toEqual(DEFAULT_EXPORT_OPTIONS);
   });
 });

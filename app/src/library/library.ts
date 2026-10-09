@@ -9,7 +9,10 @@ import type { ModeId } from '@/modes/registry';
 export const STORAGE_HEADROOM = 50 * 1024 * 1024;
 
 export class LowStorageError extends Error {
-  constructor(public readonly needed: number, public readonly available: number) {
+  constructor(
+    public readonly needed: number,
+    public readonly available: number,
+  ) {
     super('Not enough free storage to save this result. Free up some space and try again.');
     this.name = 'LowStorageError';
   }
@@ -52,6 +55,8 @@ export interface NewItem {
   resultUri: string;
   /** Small PNG preview (temp file); moved into storage. */
   thumbUri: string;
+  /** Mask layer PNG (temp file); moved into storage so the item can be refined again later. */
+  maskUri: string;
   width: number;
   height: number;
   settings: Record<string, unknown>;
@@ -86,9 +91,12 @@ export function saveItem(item: NewItem): ResultRow {
     row.originalUri = moveInto(dir, item.originalUri, `${id}-original.jpg`, true);
     row.resultUri = moveInto(dir, item.resultUri, `${id}-result.png`);
     row.thumbUri = moveInto(dir, item.thumbUri, `${id}-thumb.png`);
+    const maskUri = moveInto(dir, item.maskUri, `${id}-mask.png`);
+    row.settingsJson = JSON.stringify({ ...item.settings, maskUri }); // set early so cleanup can find it
     repo.insertResult(db(), row);
   } catch (e) {
     removeFiles(row);
+
     throw e;
   }
   return row;
@@ -97,25 +105,40 @@ export function saveItem(item: NewItem): ResultRow {
 /** Replace the stored result/thumb of an existing item (e.g. after a refine). */
 export function replaceItemImages(
   id: string,
-  resultUri: string,
-  thumbUri: string,
-  settings?: Record<string, unknown>,
+  files: { resultUri: string; thumbUri: string; maskUri: string },
 ): ResultRow | undefined {
   const row = repo.getResult(db(), id);
   if (!row) return undefined;
   const dir = libraryDir();
   const stamp = Date.now().toString(36);
-  const resultNew = moveInto(dir, resultUri, `${id}-result-${stamp}.png`);
-  const thumbNew = moveInto(dir, thumbUri, `${id}-thumb-${stamp}.png`);
+  const resultNew = moveInto(dir, files.resultUri, `${id}-result-${stamp}.png`);
+  const thumbNew = moveInto(dir, files.thumbUri, `${id}-thumb-${stamp}.png`);
+  const maskNew = moveInto(dir, files.maskUri, `${id}-mask-${stamp}.png`);
+  const old = parseSettings(row.settingsJson);
   safeDelete(row.resultUri);
   safeDelete(row.thumbUri);
+  safeDelete(typeof old.maskUri === 'string' ? old.maskUri : '');
   repo.updateResultFiles(db(), id, {
     resultUri: resultNew,
     thumbUri: thumbNew,
-    ...(settings ? { settingsJson: JSON.stringify(settings) } : {}),
+    settingsJson: JSON.stringify({ ...old, maskUri: maskNew }),
   });
   return repo.getResult(db(), id);
 }
+
+export function parseSettings(json: string): Record<string, unknown> {
+  try {
+    const v = JSON.parse(json) as unknown;
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export const maskUriOf = (row: Pick<ResultRow, 'settingsJson'>): string | null => {
+  const m = parseSettings(row.settingsJson).maskUri;
+  return typeof m === 'string' && m ? m : null;
+};
 
 function safeDelete(uri: string) {
   if (!uri) return;
@@ -127,10 +150,13 @@ function safeDelete(uri: string) {
   }
 }
 
-function removeFiles(row: Pick<ResultRow, 'originalUri' | 'resultUri' | 'thumbUri'>) {
+function removeFiles(
+  row: Pick<ResultRow, 'originalUri' | 'resultUri' | 'thumbUri' | 'settingsJson'>,
+) {
   safeDelete(row.originalUri);
   safeDelete(row.resultUri);
   safeDelete(row.thumbUri);
+  safeDelete(maskUriOf(row) ?? '');
 }
 
 export function deleteItems(ids: string[]): void {

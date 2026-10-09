@@ -1,5 +1,11 @@
 import { contrastRatio } from '@/theme/contrast';
-import { darkTokens, lightTokens, resolveScheme, tokensFor, type ThemeTokens } from '@/theme/tokens';
+import {
+  darkTokens,
+  lightTokens,
+  resolveScheme,
+  tokensFor,
+  type ThemeTokens,
+} from '@/theme/tokens';
 
 const sets: [string, ThemeTokens][] = [
   ['dark', darkTokens],
@@ -9,8 +15,17 @@ const sets: [string, ThemeTokens][] = [
 describe.each(sets)('%s tokens', (_name, t) => {
   it('defines every token as a colour string', () => {
     const required: (keyof ThemeTokens)[] = [
-      'background', 'surface', 'surfaceRaised', 'border', 'text', 'textMuted', 'accent',
-      'danger', 'checkerboardA', 'checkerboardB', 'overlay',
+      'background',
+      'surface',
+      'surfaceRaised',
+      'border',
+      'text',
+      'textMuted',
+      'accent',
+      'danger',
+      'checkerboardA',
+      'checkerboardB',
+      'overlay',
     ];
     for (const k of required) expect(typeof t[k]).toBe('string');
     expect(t.accentScan).toMatch(/^#[0-9A-F]{6}$/i);

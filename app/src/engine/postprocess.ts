@@ -47,7 +47,12 @@ export function postprocessMask(
 }
 
 /** Separable box blur with edge clamping. */
-export function boxBlur(src: Float32Array, width: number, height: number, radius: number): Float32Array {
+export function boxBlur(
+  src: Float32Array,
+  width: number,
+  height: number,
+  radius: number,
+): Float32Array {
   const tmp = new Float32Array(src.length);
   const out = new Float32Array(src.length);
   const span = radius * 2 + 1;
@@ -55,14 +60,16 @@ export function boxBlur(src: Float32Array, width: number, height: number, radius
     const row = y * width;
     for (let x = 0; x < width; x++) {
       let s = 0;
-      for (let k = -radius; k <= radius; k++) s += src[row + Math.min(width - 1, Math.max(0, x + k))]!;
+      for (let k = -radius; k <= radius; k++)
+        s += src[row + Math.min(width - 1, Math.max(0, x + k))]!;
       tmp[row + x] = s / span;
     }
   }
   for (let x = 0; x < width; x++) {
     for (let y = 0; y < height; y++) {
       let s = 0;
-      for (let k = -radius; k <= radius; k++) s += tmp[Math.min(height - 1, Math.max(0, y + k)) * width + x]!;
+      for (let k = -radius; k <= radius; k++)
+        s += tmp[Math.min(height - 1, Math.max(0, y + k)) * width + x]!;
       out[y * width + x] = s / span;
     }
   }
@@ -78,7 +85,12 @@ export interface Bounds {
 }
 
 /** Bounding box of pixels whose alpha is above `threshold`; null when the mask is empty. */
-export function maskBounds(alpha: Uint8Array, width: number, height: number, threshold = 16): Bounds | null {
+export function maskBounds(
+  alpha: Uint8Array,
+  width: number,
+  height: number,
+  threshold = 16,
+): Bounds | null {
   let left = width;
   let top = height;
   let right = -1;
@@ -133,7 +145,13 @@ export function applyMaskToRgba(rgba: Uint8Array, mask: Uint8Array): Uint8Array 
 }
 
 /** Bilinear resize of an 8-bit single-channel image (CPU reference / tests; device uses Skia). */
-export function resizeMaskBilinear(src: Uint8Array, sw: number, sh: number, dw: number, dh: number): Uint8Array {
+export function resizeMaskBilinear(
+  src: Uint8Array,
+  sw: number,
+  sh: number,
+  dw: number,
+  dh: number,
+): Uint8Array {
   const out = new Uint8Array(dw * dh);
   for (let y = 0; y < dh; y++) {
     const fy = Math.min(sh - 1, Math.max(0, ((y + 0.5) * sh) / dh - 0.5));

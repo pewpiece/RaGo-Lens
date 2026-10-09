@@ -18,11 +18,14 @@ import { fontSizes, radii, spacing, type ThemeTokens } from '@/theme/tokens';
 
 export function Screen({
   children,
+  header,
   scroll = false,
   padded = true,
   style,
 }: {
   children: ReactNode;
+  /** Rendered above the (scrolling) body, e.g. a <Header/>. */
+  header?: ReactNode;
   scroll?: boolean;
   padded?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -31,7 +34,8 @@ export function Screen({
   const body = scroll ? (
     <ScrollView
       contentContainerStyle={[padded && { padding: spacing.lg }, { flexGrow: 1 }, style]}
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="handled"
+    >
       {children}
     </ScrollView>
   ) : (
@@ -40,6 +44,7 @@ export function Screen({
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.background }}>
       <StatusBar style={tokens.scheme === 'dark' ? 'light' : 'dark'} />
+      {header}
       {body}
     </SafeAreaView>
   );
@@ -63,7 +68,8 @@ export function Header({
           accessibilityLabel="Go back"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={12}
-          style={s.back}>
+          style={s.back}
+        >
           <Text style={s.backText}>‹</Text>
         </Pressable>
       ) : null}
@@ -76,8 +82,19 @@ export function Header({
 }
 const headerStyles = (t: ThemeTokens) =>
   StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: spacing.lg },
-    back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -10 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 48,
+      paddingHorizontal: spacing.lg,
+    },
+    back: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: -10,
+    },
     backText: { color: t.text, fontSize: 32, lineHeight: 36 },
     title: { color: t.text, fontSize: fontSizes.title, fontWeight: '700', flex: 1 },
     right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -108,7 +125,8 @@ export function SectionTitle({ children }: { children: ReactNode }) {
         textTransform: 'uppercase',
         marginTop: spacing.xl,
         marginBottom: spacing.sm,
-      }}>
+      }}
+    >
       {children}
     </Text>
   );
@@ -165,7 +183,8 @@ export function Button({
           opacity: inactive ? 0.5 : pressed ? 0.8 : 1,
         },
         style,
-      ]}>
+      ]}
+    >
       {busy ? <ActivityIndicator color={c.fg} /> : null}
       <Text style={{ color: c.fg, fontSize: fontSizes.bodyLg, fontWeight: '600' }}>{label}</Text>
     </Pressable>
@@ -195,7 +214,7 @@ export function Card({
     borderColor: t.border,
     padding: spacing.lg,
   };
-  if (!onPress) return <View style={[base, style]}>{children}</View>;
+  if (!onPress && !disabled) return <View style={[base, style]}>{children}</View>;
   return (
     <Pressable
       testID={testID}
@@ -204,7 +223,8 @@ export function Card({
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [base, { opacity: disabled ? 0.55 : pressed ? 0.85 : 1 }, style]}>
+      style={({ pressed }) => [base, { opacity: disabled ? 0.55 : pressed ? 0.85 : 1 }, style]}
+    >
       {children}
     </Pressable>
   );
@@ -233,7 +253,8 @@ export function Segmented<T extends string | number>({
         padding: 3,
         borderWidth: 1,
         borderColor: t.border,
-      }}>
+      }}
+    >
       {options.map((o) => {
         const selected = o.value === value;
         return (
@@ -251,13 +272,15 @@ export function Segmented<T extends string | number>({
               justifyContent: 'center',
               backgroundColor: selected ? t.accent : 'transparent',
               paddingHorizontal: 4,
-            }}>
+            }}
+          >
             <Text
               style={{
                 color: selected ? t.onAccent : t.text,
                 fontWeight: selected ? '700' : '500',
                 fontSize: fontSizes.body,
-              }}>
+              }}
+            >
               {o.label}
             </Text>
           </Pressable>
@@ -279,7 +302,9 @@ export function Row({
   const { tokens: t } = useTheme();
   return (
     <View style={{ marginBottom: spacing.lg }}>
-      <Text style={{ color: t.text, fontSize: fontSizes.bodyLg, fontWeight: '600', marginBottom: 2 }}>
+      <Text
+        style={{ color: t.text, fontSize: fontSizes.bodyLg, fontWeight: '600', marginBottom: 2 }}
+      >
         {label}
       </Text>
       {hint ? (
@@ -312,10 +337,20 @@ export function Toggle({
       accessibilityState={{ checked: value }}
       accessibilityLabel={label}
       onPress={() => onChange(!value)}
-      style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, marginBottom: spacing.sm }}>
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 48,
+        marginBottom: spacing.sm,
+      }}
+    >
       <View style={{ flex: 1, paddingRight: spacing.md }}>
-        <Text style={{ color: t.text, fontSize: fontSizes.bodyLg, fontWeight: '600' }}>{label}</Text>
-        {hint ? <Text style={{ color: t.textMuted, fontSize: fontSizes.caption }}>{hint}</Text> : null}
+        <Text style={{ color: t.text, fontSize: fontSizes.bodyLg, fontWeight: '600' }}>
+          {label}
+        </Text>
+        {hint ? (
+          <Text style={{ color: t.textMuted, fontSize: fontSizes.caption }}>{hint}</Text>
+        ) : null}
       </View>
       <View
         style={{
@@ -328,7 +363,8 @@ export function Toggle({
           justifyContent: 'center',
           paddingHorizontal: 3,
           alignItems: value ? 'flex-end' : 'flex-start',
-        }}>
+        }}
+      >
         <View
           style={{
             width: 22,
@@ -360,7 +396,8 @@ export function Banner({
         borderRadius: radii.md,
         padding: spacing.md,
         backgroundColor: t.surface,
-      }}>
+      }}
+    >
       <Text style={{ color, fontSize: fontSizes.body }}>{children}</Text>
     </View>
   );

@@ -54,7 +54,9 @@ export class OnnxSegmentationEngine implements ImageEngine {
       this.session = (async () => {
         const path = await this.deps.modelPath();
         try {
-          return await this.deps.ort.InferenceSession.create(path, { graphOptimizationLevel: 'all' });
+          return await this.deps.ort.InferenceSession.create(path, {
+            graphOptimizationLevel: 'all',
+          });
         } catch (e) {
           throw new CutoutError(
             'model-load-failed',
@@ -94,7 +96,8 @@ export class OnnxSegmentationEngine implements ImageEngine {
 
       const out = outputs[session.outputNames[0]!];
       if (!out) throw new Error('Model returned no output');
-      if (out.data.length < N * N) throw new Error(`Unexpected model output size ${out.data.length}`);
+      if (out.data.length < N * N)
+        throw new Error(`Unexpected model output size ${out.data.length}`);
       onProgress?.(0.9, 'Refining edges');
       const mask = postprocessMask(out.data, N, N);
       onProgress?.(1, 'Done');

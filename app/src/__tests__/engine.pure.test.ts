@@ -77,7 +77,9 @@ describe('applyMaskToRgba (known mask -> known alpha)', () => {
     const rgba = new Uint8Array([10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 128, 1, 2, 3, 255]);
     const mask = new Uint8Array([0, 255, 255, 128]);
     const out = applyMaskToRgba(rgba, mask);
-    expect(Array.from(out)).toEqual([10, 20, 30, 0, 40, 50, 60, 255, 70, 80, 90, 128, 1, 2, 3, 128]);
+    expect(Array.from(out)).toEqual([
+      10, 20, 30, 0, 40, 50, 60, 255, 70, 80, 90, 128, 1, 2, 3, 128,
+    ]);
     expect(rgba[3]).toBe(255); // input not mutated
   });
   it('throws on a size mismatch', () => {
@@ -117,7 +119,9 @@ describe('maskBounds / scaleAndPadBounds', () => {
   it('scales, pads and clamps', () => {
     const b = scaleAndPadBounds({ left: 3, top: 2, right: 7, bottom: 6 }, 10, 10, 10, 100, 80);
     expect(b).toEqual({ left: 26, top: 16, right: 74, bottom: 64 });
-    expect(scaleAndPadBounds({ left: 0, top: 0, right: 10, bottom: 8 }, 10, 10, 50, 100, 80)).toEqual({
+    expect(
+      scaleAndPadBounds({ left: 0, top: 0, right: 10, bottom: 8 }, 10, 10, 50, 100, 80),
+    ).toEqual({
       left: 0,
       top: 0,
       right: 100,
@@ -135,15 +139,23 @@ describe('MockEngine', () => {
   });
   it('reports progress', async () => {
     const seen: number[] = [];
-    await new MockEngine().segment({ uri: 'x', width: 10, height: 10 }, { onProgress: (f) => seen.push(f) });
+    await new MockEngine().segment(
+      { uri: 'x', width: 10, height: 10 },
+      { onProgress: (f) => seen.push(f) },
+    );
     expect(seen[seen.length - 1]).toBe(1);
   });
   it('can be cancelled before and during work', async () => {
     const c = new AbortController();
     c.abort();
-    await expect(new MockEngine().segment({ uri: 'x', width: 4, height: 4 }, { signal: c.signal })).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(
+      new MockEngine().segment({ uri: 'x', width: 4, height: 4 }, { signal: c.signal }),
+    ).rejects.toMatchObject({ code: 'cancelled' });
     const c2 = new AbortController();
-    const p = new MockEngine({ delayMs: 50 }).segment({ uri: 'x', width: 4, height: 4 }, { signal: c2.signal });
+    const p = new MockEngine({ delayMs: 50 }).segment(
+      { uri: 'x', width: 4, height: 4 },
+      { signal: c2.signal },
+    );
     setTimeout(() => c2.abort(), 5);
     await expect(p).rejects.toMatchObject({ code: 'cancelled' });
   });
@@ -152,7 +164,9 @@ describe('MockEngine', () => {
     expect(isCancelled(new Error('x'))).toBe(false);
   });
   it('surfaces injected failures', async () => {
-    await expect(new MockEngine({ failWith: new Error('boom') }).segment({ uri: 'x', width: 4, height: 4 })).rejects.toThrow('boom');
+    await expect(
+      new MockEngine({ failWith: new Error('boom') }).segment({ uri: 'x', width: 4, height: 4 }),
+    ).rejects.toThrow('boom');
   });
   it('ellipseMask is symmetric', () => {
     const m = ellipseMask(9, 9);
