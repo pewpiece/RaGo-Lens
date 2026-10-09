@@ -69,3 +69,6 @@ Written honestly: **I could not build or run this app on an Android device or em
 Lint and typecheck clean; all tests pass (count in `TEST_OUTPUT.txt`), including real-Skia pixel tests (known mask gives known alpha, DstIn compositing, brush erase/restore,
 soft edges, shadow, auto-crop geometry, size caps, PNG alpha detection and encoding round-trip), real-SQLite migrations and repository tests,
 ONNX engine tests with a fake runtime, cancellation/error paths, theme/settings stores and screen flows (denied permissions, failed saves, OOM, retry).
+
+- Edge tightening presets (Normal/Tight) are untested on device and tuned only on synthetic masks; they may eat fine detail (fur, thin straps) on some photos. Soft restores the old behaviour.
+- Lasso is manual. There is no automatic "remove this logo" and no inpainting: removed areas become transparent, not filled in.

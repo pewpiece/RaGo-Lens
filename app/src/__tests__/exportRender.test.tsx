@@ -192,6 +192,25 @@ describe('export rendering (real Skia scene)', () => {
     expect(readAlpha(baked)[50 * W + 100]).toBe(0);
   });
 
+  it('a lasso removes only the enclosed area', async () => {
+    const lasso: Stroke = {
+      id: 1,
+      mode: 'erase',
+      shape: 'area',
+      size: 0,
+      softness: 0,
+      points: [
+        { x: 80, y: 30 },
+        { x: 120, y: 30 },
+        { x: 120, y: 70 },
+        { x: 80, y: 70 },
+      ],
+    };
+    const baked = readAlpha(await bakeMask({ ...scene(), strokes: [lasso] }));
+    expect(baked[50 * W + 100]).toBe(0);
+    expect(baked[50 * W + 60]).toBeGreaterThan(200);
+  });
+
   it('finds the object bounds from the mask (with strokes applied)', async () => {
     const b = (await objectBoundsOf(scene()))!;
     expect(b.left).toBeGreaterThan(20);

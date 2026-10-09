@@ -11,7 +11,8 @@ import { router } from 'expo-router';
 import { Banner, Button, Header, Screen, Segmented } from '@/components/ui';
 import { SceneCanvas } from '@/components/SceneCanvas';
 import { Slider } from '@/components/Slider';
-import { encodePng } from '@/engine/skiaOps';
+import { edgeRamp } from '@/engine/edge';
+import { encodePng, tightenMask } from '@/engine/skiaOps';
 import { updateLibraryItem } from '@/library/saveResult';
 import { writeCacheFile, tempName } from '@/lib/files';
 import { bakeMask } from '@/scene/exportRender';
@@ -20,6 +21,7 @@ import {
   canRedo,
   canUndo,
   emptyHistory,
+  isUsableStroke,
   pushStroke,
   redo,
   undo,
@@ -39,7 +41,7 @@ import { useSession } from '@/store/session';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing } from '@/theme/tokens';
 
-type Tool = BrushMode | 'move';
+type Tool = BrushMode | 'lasso' | 'move';
 
 export default function Refine() {
   const { tokens: t } = useTheme();
@@ -88,7 +90,7 @@ export default function Refine() {
     live$.current = null;
     setLive(null);
     setCursor(null);
-    if (s && s.points.length > 0) setHist((h) => pushStroke(h, s));
+    if (s && isUsableStroke(s)) setHist((h) => pushStroke(h, s));
   }, []);
 
   // PanResponder handlers only touch refs when a gesture fires, never during render.
@@ -116,9 +118,11 @@ export default function Refine() {
         const ip = screenToImage(v, p);
         const stroke: Stroke = {
           id: nextId.current++,
-          mode: cfg.current.tool as BrushMode,
-          size: cfg.current.brush / v.scale,
-          softness: cfg.current.softness,
+          mode: cfg.current.tool === 'restore' ? 'restore' : 'erase',
+          shape: cfg.current.tool === 'lasso' ? 'area' : 'brush',
+          // a lasso only needs a thin feathered edge; the brush uses the size slider
+          size: (cfg.current.tool === 'lasso' ? 6 : cfg.current.brush) / v.scale,
+          softness: cfg.current.tool === 'lasso' ? 0.4 : cfg.current.softness,
           points: [ip],
         };
         live$.current = stroke;
@@ -227,6 +231,39 @@ export default function Refine() {
     }
   };
 
+  // Pulls the edge in by one step (removes a light rim). Applies any pending strokes first, so nothing is lost.
+  const tighten = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const withStrokes = await bakeMask({
+        maskLayer: result.maskLayer,
+        strokes: hist.strokes,
+        width: result.width,
+        height: result.height,
+      });
+      const { lo, hi } = edgeRamp('tight');
+      const tight = tightenMask(withStrokes, lo, hi);
+      const maskUri = writeCacheFile(tempName('mask', 'png'), encodePng(tight));
+      useSession.getState().replaceMask(tight, maskUri);
+      setHist(emptyHistory());
+      const updated = useSession.getState().result;
+      if (itemId && updated) {
+        try {
+          await updateLibraryItem(itemId, updated);
+        } catch {
+          useSession
+            .getState()
+            .setNotice('Your edit is applied but could not be saved to the library.');
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not tighten the edge.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const cancel = () => {
     if (!dirty) return router.back();
     Alert.alert('Discard edits?', 'Your brush strokes will be lost.', [
@@ -258,7 +295,7 @@ export default function Refine() {
             {...responder.panHandlers}
             accessibilityLabel="Editing area. Drag to paint, use two fingers to zoom and pan."
           />
-          {cursor && tool !== 'move' ? (
+          {cursor && (tool === 'erase' || tool === 'restore') ? (
             <View
               pointerEvents="none"
               style={{
@@ -285,9 +322,15 @@ export default function Refine() {
           options={[
             { value: 'erase', label: 'Erase' },
             { value: 'restore', label: 'Restore' },
+            { value: 'lasso', label: 'Lasso' },
             { value: 'move', label: 'Move' },
           ]}
         />
+        {tool === 'lasso' ? (
+          <Text style={{ color: t.textMuted, fontSize: 13 }}>
+            Draw around the part you want gone (a logo, a tag). Lift your finger and it is removed.
+          </Text>
+        ) : null}
         <Slider
           label="Brush size"
           value={brush}
@@ -326,6 +369,7 @@ export default function Refine() {
             style={{ flex: 1, paddingHorizontal: spacing.sm }}
           />
         </View>
+        <Button label="Tighten edge" onPress={() => void tighten()} disabled={saving} />
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <Button label="Cancel" onPress={cancel} style={{ flex: 1 }} />
           <Button

@@ -1,7 +1,8 @@
 import type { SkImage } from '@shopify/react-native-skia';
 import { maskBounds } from './postprocess';
 import type { PreparedImage } from './imagePrep';
-import { encodePng, maskLayerFromAlpha } from './skiaOps';
+import { DEFAULT_EDGE, edgeRamp, type EdgeLevel } from './edge';
+import { encodePng, maskLayerFromAlpha, tightenMask } from './skiaOps';
 import { throwIfAborted, toCutoutError, type ImageEngine } from './types';
 
 export interface PipelineDeps {
@@ -33,6 +34,8 @@ export interface RunCutoutOptions {
   /** Max long edge of the working image, in px. */
   cap: number;
   engine: ImageEngine;
+  /** How tightly the edge hugs the object (default 'normal'). */
+  edge?: EdgeLevel;
   signal?: AbortSignal;
   onProgress?: (fraction: number, label: string) => void;
 }
@@ -43,7 +46,7 @@ export interface RunCutoutOptions {
  * never the other way round, so detail is not lost to the model's low-resolution output.
  */
 export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Promise<CutoutResult> {
-  const { uri, cap, engine, signal, onProgress } = opts;
+  const { uri, cap, engine, signal, onProgress, edge = DEFAULT_EDGE } = opts;
   try {
     throwIfAborted(signal);
     onProgress?.(0.02, 'Reading photo');
@@ -62,12 +65,11 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
     onProgress?.(0.82, 'Sharpening edges');
     const original = await deps.loadImage(prepared.uri);
     throwIfAborted(signal);
-    const maskLayer = maskLayerFromAlpha(
-      mask.alpha,
-      mask.width,
-      mask.height,
-      prepared.width,
-      prepared.height,
+    const { lo, hi } = edgeRamp(edge);
+    const maskLayer = tightenMask(
+      maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height),
+      lo,
+      hi,
     );
     throwIfAborted(signal);
 

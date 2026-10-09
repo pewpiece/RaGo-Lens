@@ -16,6 +16,7 @@ export default function Processing() {
   const sourceUri = useSession((s) => s.sourceUri);
   const capOverride = useSession((s) => s.capOverride);
   const settingsCap = useSettingsStore((s) => s.workingSizeCap);
+  const edge = useSettingsStore((s) => s.edgeLevel);
   const useMock = useSettingsStore((s) => s.useMockEngine);
   const [progress, setProgress] = useState(0);
   const [label, setLabel] = useState('Starting');
@@ -60,6 +61,7 @@ export default function Processing() {
             uri: sourceUri,
             cap,
             engine: getEngine(useMock),
+            edge,
             signal: controller.signal,
             onProgress: (f, l) => {
               if (controller.signal.aborted) return;
@@ -87,7 +89,7 @@ export default function Processing() {
       }
     })();
     return () => controller.abort(); // leaving the screen cancels the work
-  }, [sourceUri, capOverride, settingsCap, useMock, attempt]);
+  }, [sourceUri, capOverride, settingsCap, edge, useMock, attempt]);
 
   const cancel = useCallback(() => {
     abort.current?.abort();

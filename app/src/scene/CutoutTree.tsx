@@ -22,6 +22,7 @@ export function strokePath(stroke: Stroke): SkPath {
     b.moveTo(pts[0]!.x, pts[0]!.y);
     if (pts.length === 1) b.lineTo(pts[0]!.x + 0.01, pts[0]!.y);
     for (let i = 1; i < pts.length; i++) b.lineTo(pts[i]!.x, pts[i]!.y);
+    if (stroke.shape === 'area') b.close();
   }
   const path = b.build();
   pathCache.set(stroke, path);
@@ -44,7 +45,7 @@ export function MaskTree({ maskLayer, strokes, width, height }: MaskTreeProps) {
         <Path
           key={s.id}
           path={strokePath(s)}
-          style="stroke"
+          style={s.shape === 'area' ? 'fill' : 'stroke'}
           strokeWidth={s.size}
           strokeCap="round"
           strokeJoin="round"

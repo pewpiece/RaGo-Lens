@@ -18,6 +18,7 @@ import { useSettingsStore, useThemeStore } from '@/store/instances';
 import { WORKING_SIZE_CHOICES } from '@/store/settingsStore';
 import { MODEL_INFO } from '@/about/licenses';
 import type { ExportBackground, ExportSize } from '@/export/options';
+import type { EdgeLevel } from '@/engine/edge';
 import type { ScanScript } from '@/scan/types';
 import type { ThemeMode } from '@/theme/tokens';
 import { useState } from 'react';
@@ -29,6 +30,8 @@ export default function Settings() {
   const exp = useSettingsStore((s) => s.exportDefaults);
   const setExp = useSettingsStore((s) => s.setExportDefaults);
   const cap = useSettingsStore((s) => s.workingSizeCap);
+  const edgeLevel = useSettingsStore((s) => s.edgeLevel);
+  const setEdgeLevel = useSettingsStore((s) => s.setEdgeLevel);
   const setCap = useSettingsStore((s) => s.setWorkingSizeCap);
   const scanScript = useSettingsStore((s) => s.scanScript);
   const setScanScript = useSettingsStore((s) => s.setScanScript);
@@ -142,6 +145,21 @@ export default function Settings() {
           value={cap}
           onChange={(v) => void setCap(v)}
           options={WORKING_SIZE_CHOICES.map((v) => ({ value: v, label: String(v) }))}
+        />
+      </Row>
+      <Row
+        label="Cut-out edge"
+        hint="Tight pulls the edge in to remove a light rim around dark objects. Applies to new cut-outs."
+      >
+        <Segmented<EdgeLevel>
+          label="Cut-out edge"
+          value={edgeLevel}
+          onChange={(v) => void setEdgeLevel(v)}
+          options={[
+            { value: 'soft', label: 'Soft' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'tight', label: 'Tight' },
+          ]}
         />
       </Row>
       <Toggle

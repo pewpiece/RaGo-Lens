@@ -154,3 +154,7 @@ points at `icon.png`, `adaptive-icon-foreground.png`, `splash-icon.png` and the 
 Jest + React Native Testing Library; the Skia pixel tests use real Skia on CanvasKit; DB tests use real SQLite (sql.js);
 the model itself is verified with a desktop script (`scripts/verify-model`). See `TEST_OUTPUT.txt` for real output and
 `WEAKNESSES.md` for what only a phone can prove.
+
+## Cut-out edge tightening and lasso eraser
+- The model's mask is feathered, so dark objects photographed in dim light kept a light rim of background. After upscaling, the mask goes through an alpha ramp (Skia colour filter, no JS pixel loops). Settings has Soft / Normal / Tight (default Normal); Refine has a one-tap "Tighten edge" for an existing result.
+- Refine gained a Lasso tool: draw around an unwanted part (a logo or tag) and the enclosed area is erased, as a filled-path stroke so undo/redo and export work as before.

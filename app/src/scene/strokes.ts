@@ -1,5 +1,8 @@
 export type BrushMode = 'erase' | 'restore';
 
+/** 'brush' paints along the path; 'area' fills the closed outline (lasso). */
+export type StrokeShape = 'brush' | 'area';
+
 export interface Point {
   x: number;
   y: number;
@@ -9,6 +12,8 @@ export interface Point {
 export interface Stroke {
   id: number;
   mode: BrushMode;
+  /** Defaults to 'brush'. */
+  shape?: StrokeShape;
   /** Brush diameter in image pixels. */
   size: number;
   /** 0 = hard edge, 1 = very soft. */
@@ -39,6 +44,10 @@ export function redo(h: BrushHistory): BrushHistory {
 
 export const canUndo = (h: BrushHistory) => h.strokes.length > 0;
 export const canRedo = (h: BrushHistory) => h.redo.length > 0;
+
+/** A lasso outline needs three points to enclose anything. */
+export const isUsableStroke = (s: Stroke): boolean =>
+  s.shape === 'area' ? s.points.length >= 3 : s.points.length > 0;
 
 /** Blur radius (image px) for a stroke's soft edge. */
 export function softnessBlur(size: number, softness: number): number {

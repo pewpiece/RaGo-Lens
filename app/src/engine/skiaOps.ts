@@ -157,6 +157,34 @@ export function applyMaskLayer(
   return surface.makeImageSnapshot();
 }
 
+/**
+ * Pulls a mask layer's edge inwards: alpha' = clamp((alpha - lo) / (hi - lo)), colour stays white.
+ * Runs as a Skia colour filter, so there is no per-pixel JavaScript.
+ */
+export function tightenMask(maskLayer: SkImage, lo: number, hi: number): SkImage {
+  if (lo <= 0 && hi >= 1) return maskLayer;
+  const w = maskLayer.width();
+  const h = maskLayer.height();
+  const k = 1 / Math.max(0.01, hi - lo);
+  const b = -lo * k;
+  const surface = Skia.Surface.Make(w, h);
+  if (!surface) throw new Error('Out of memory: could not allocate mask surface');
+  const paint = Skia.Paint();
+  // rows: R, G, B forced to 1 (white); A = k * A + b. Offsets are in 0..1 units.
+  // prettier-ignore
+  paint.setColorFilter(
+    Skia.ColorFilter.MakeMatrix([
+      0, 0, 0, 0, 1,
+      0, 0, 0, 0, 1,
+      0, 0, 0, 0, 1,
+      0, 0, 0, k, b,
+    ]),
+  );
+  surface.getCanvas().drawImage(maskLayer, 0, 0, paint);
+  surface.flush?.();
+  return surface.makeImageSnapshot();
+}
+
 /** Alpha channel of an image as bytes (w*h), for bounds detection and tests. */
 export function readAlpha(img: SkImage): Uint8Array {
   const w = img.width();

@@ -11,6 +11,7 @@ import {
   readAlpha,
   resizeImage,
   sampleRgba,
+  tightenMask,
 } from '@/engine/skiaOps';
 import { applyMaskToRgba, resizeMaskBilinear } from '@/engine/postprocess';
 
@@ -80,6 +81,18 @@ describe('Skia pixel ops (real Skia via CanvasKit)', () => {
     expect(mid).toBeGreaterThan(0);
     expect(mid).toBeLessThan(255);
     expect(Math.abs(mid - ref)).toBeLessThan(60); // same ballpark as the bilinear reference
+  });
+
+  it('tightenMask pulls soft edges inwards and keeps solid areas solid', () => {
+    const alpha = new Uint8Array(4);
+    alpha.set([255, 200, 100, 20]);
+    const asRgba = maskLayerFromAlpha(alpha, 4, 1, 4, 1);
+    const before = Array.from(readAlpha(asRgba));
+    const after = Array.from(readAlpha(tightenMask(asRgba, 0.3, 0.85)));
+    expect(after[0]).toBe(255);
+    expect(after[3]).toBe(0);
+    expect(after[2]).toBeLessThan(before[2]!);
+    expect(tightenMask(asRgba, 0, 1)).toBe(asRgba);
   });
 
   it('wraps Alpha_8 coverage and round-trips through readAlpha', () => {
