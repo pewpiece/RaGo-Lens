@@ -11,6 +11,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: app
@@ -56,7 +57,7 @@ jobs:
 
       - name: Build release APK (unsigned by us; Gradle uses the template debug key)
         working-directory: app/android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=$ARCHS
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=$ARCHS -Dorg.gradle.jvmargs=-Xmx4g
 
       - name: Align and sign APK
         env:

@@ -1,0 +1,43 @@
+name: Build check (no secrets)
+
+# Builds an APK signed with the throwaway debug key, to find out whether the native build works BEFORE you set up
+# release signing. Trigger: push a tag starting with "check-" (e.g. `git tag check-1 && git push origin check-1`),
+# or "Run workflow" if this file is on the default branch. Download the APK from the run's Artifacts. Do not publish it.
+on:
+  push:
+    tags: ['check-*']
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Fetch segmentation model (SHA-256 verified)
+        working-directory: .
+        run: ./scripts/fetch-model.sh
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install --clean
+      - name: Build APK (arm64 only, fastest)
+        working-directory: app/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a -Dorg.gradle.jvmargs=-Xmx4g
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rago-lens-debug-signed-apk
+          path: app/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
