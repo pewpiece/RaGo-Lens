@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ShareIntentProvider, useShareIntent } from 'expo-share-intent';
@@ -12,8 +12,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 /** Images shared into the app from the gallery or other apps go straight to processing. */
 function ShareIntentHandler() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  const navReady = !!useRootNavigationState()?.key; // navigating before the root layout mounts throws
   useEffect(() => {
-    if (!hasShareIntent) return;
+    if (!hasShareIntent || !navReady) return;
     const file = shareIntent.files?.find((f) => f.mimeType?.startsWith('image/')) ?? null;
     if (file?.path) {
       useSession
@@ -26,7 +27,7 @@ function ShareIntentHandler() {
       router.replace('/processing');
     }
     resetShareIntent();
-  }, [hasShareIntent, shareIntent, resetShareIntent]);
+  }, [hasShareIntent, navReady, shareIntent, resetShareIntent]);
   return null;
 }
 

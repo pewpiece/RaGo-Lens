@@ -1,4 +1,5 @@
-import { loadImage, sampleRgba } from './skiaOps';
+import { sampleRgba } from './skiaOps';
+import { loadImage } from '@/lib/loadImage';
 import { bundledModelPath } from './modelAsset';
 import { MockEngine } from './mockEngine';
 import { OnnxSegmentationEngine } from './onnxEngine';

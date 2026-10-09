@@ -70,6 +70,12 @@ to confirm that path exists but could not run it on a device.
 - Export is **PNG only**. Transparent and shadow exports are verified: the PNG is re-read from disk and its IHDR colour type
   (or tRNS chunk) must show an alpha channel, otherwise the export is refused (`export/png.ts`, `export/actions.ts`).
 
+## Image loading and file APIs (found by reading library source)
+- Images are decoded via `expo-file-system` bytes (`lib/loadImage.ts`), **not `Skia.Data.fromURI`**: on Android that native call returns without
+  ever resolving or rejecting when a file cannot be opened, which would hang the UI on a deleted library item.
+- `expo-file-system`'s `copy()`/`move()` are async; the library uses `copySync()`/`moveSync()`. A fake filesystem that keeps the sync/async split
+  (`src/testing/fakeFileSystem.ts`) backs `libraryFiles.test.ts`; mutating the code back to the async calls makes that test run crash.
+
 ## Share intent
 **`expo-share-intent@8.0.1`**: the only maintained option I found that (a) has an Expo config plugin that works with
 `expo prebuild`, (b) supports SDK 57, (c) registers the Android `SEND image/*` intent filter and (d) exposes a React hook.

@@ -62,8 +62,9 @@ function moveInto(dir: Directory, srcUri: string, name: string, copy = false): s
   const src = new File(srcUri);
   const dest = new File(dir, name);
   if (dest.exists) dest.delete();
-  if (copy) src.copy(dest);
-  else src.move(dest);
+  // expo-file-system's copy()/move() are async; the *Sync variants finish before we record the path.
+  if (copy) src.copySync(dest);
+  else src.moveSync(dest);
   return dest.uri;
 }
 

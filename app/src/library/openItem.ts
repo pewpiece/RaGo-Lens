@@ -1,4 +1,4 @@
-import { loadImage } from '@/engine/skiaOps';
+import { loadImage } from '@/lib/loadImage';
 import type { CutoutResult } from '@/engine/pipeline';
 import type { ResultRow } from '@/db/schema';
 import { maskUriOf } from './library';

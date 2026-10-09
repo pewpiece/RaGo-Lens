@@ -13,13 +13,6 @@ import {
   type SkImage,
 } from '@shopify/react-native-skia';
 
-export async function loadImage(uri: string): Promise<SkImage> {
-  const data = await Skia.Data.fromURI(uri);
-  const img = Skia.Image.MakeImageFromEncoded(data);
-  if (!img) throw new Error(`Could not load image: unsupported or unreadable data (${uri})`);
-  return img;
-}
-
 export function imageFromBytes(bytes: Uint8Array): SkImage {
   const img = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(bytes));
   if (!img) throw new Error('Could not load image: unsupported or unreadable data');
