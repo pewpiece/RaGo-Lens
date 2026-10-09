@@ -18,7 +18,7 @@ Library (SQLite + app storage). Themes: System / Light / Dark.
 ## Repo layout
 ```
 app/                 Expo project (routes in app/src/app, code in app/src)
-  assets/branding/   icon.png, adaptive-icon-foreground.png, splash-icon.png (placeholders: replace with yours)
+  assets/branding/   icon.png, adaptive-icon-foreground.png, splash-icon.png (RaGo buffalo logo)
   assets/models/     u2netp.onnx (downloaded by scripts/fetch-model.sh, not committed)
 scripts/             fetch-model.sh + model.env (pinned URL/SHA-256), verify-model/ (desktop model check)
 docs/                RELEASING.md (signing + release), DEVICE_TEST_CHECKLIST.md
