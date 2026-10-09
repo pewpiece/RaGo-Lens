@@ -124,6 +124,8 @@ export default function Settings() {
         onChange={(v) => void setMock(v)}
       />
 
+      <Button label="Run diagnostics" onPress={() => router.push('/selftest')} />
+
       <SectionTitle>Library</SectionTitle>
       <Button label="Clear library" kind="danger" onPress={confirmClear} />
 

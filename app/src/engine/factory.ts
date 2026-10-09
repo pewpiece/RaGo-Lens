@@ -3,7 +3,7 @@ import { loadImage } from '@/lib/loadImage';
 import { bundledModelPath } from './modelAsset';
 import { MockEngine } from './mockEngine';
 import { OnnxSegmentationEngine } from './onnxEngine';
-import { ort } from './ortRuntime';
+import { loadOrt } from './ortRuntime';
 import { devicePrepDeps } from './imagePrepDevice';
 import { prepareWorkingImage } from './imagePrep';
 import type { PipelineDeps } from './pipeline';
@@ -17,7 +17,7 @@ export function getEngine(useMock: boolean): ImageEngine {
   if (useMock) return new MockEngine({ delayMs: 600 });
   if (!onnx) {
     onnx = new OnnxSegmentationEngine({
-      ort,
+      ort: loadOrt,
       modelPath: bundledModelPath,
       sampleRgba: async (input, size) => sampleRgba(await loadImage(input.uri), size, size),
     });

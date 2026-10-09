@@ -36,11 +36,26 @@ for route in "" capture settings licenses library processing result refine expor
   [ "$status" = DEAD ] && crash_report "/${route}"
 done
 
+# Full on-device pipeline check: real model inference + Skia compositing + transparent PNG export
+adb shell am force-stop $PKG
+adb logcat -c
+adb shell am start -a android.intent.action.VIEW -d "ragolens://selftest" $PKG >/dev/null
+selftest=TIMEOUT
+for i in $(seq 1 60); do
+  sleep 3
+  if adb logcat -d -v brief | grep -q "SELFTEST \(PASS\|FAIL\)"; then selftest=done; break; fi
+  if [ -z "$(adb shell pidof $PKG)" ]; then selftest=DIED; break; fi
+done
+echo "SELFTEST RESULT: $selftest"
+adb logcat -d -v brief | grep -E "SELFTEST|FATAL|AndroidRuntime|Fatal signal|SIGSEGV|ReactNativeJS" | tail -40
+if [ "$selftest" = DIED ]; then crash_report "selftest"; fi
+summary="$summary\nselftest: $selftest ($(adb logcat -d -v brief | grep -o 'SELFTEST \(PASS\|FAIL\)[^\n]*' | tail -1))"
+
 # Real flow: share an image into the app (what the gallery Share button does)
 adb shell am force-stop $PKG
 adb logcat -c
 adb shell am start -a android.intent.action.SEND -t image/jpeg --eu android.intent.extra.STREAM file:///sdcard/Download/car.jpg -n $PKG/.MainActivity >/dev/null
-sleep 40
+sleep 15
 if [ -n "$(adb shell pidof $PKG)" ]; then status=ALIVE; else status=DEAD; fi
 echo "SHARE-INTENT FLOW: $status"
 summary="$summary\nshare-intent flow: $status"

@@ -29,7 +29,8 @@ export interface OrtLike {
 }
 
 export interface OnnxEngineDeps {
-  ort: OrtLike;
+  /** The runtime, or a function returning it (resolved lazily so import failures become CutoutErrors). */
+  ort: OrtLike | (() => OrtLike);
   /** Resolves to a local filesystem path of the .onnx file, or throws CutoutError('model-missing'). */
   modelPath: () => Promise<string>;
   /** Image -> RGBA bytes resampled to size x size (Skia on device). */
@@ -49,15 +50,20 @@ export class OnnxSegmentationEngine implements ImageEngine {
 
   constructor(private readonly deps: OnnxEngineDeps) {}
 
+  private runtime(): OrtLike {
+    return typeof this.deps.ort === 'function' ? this.deps.ort() : this.deps.ort;
+  }
+
   private getSession(): Promise<OrtSessionLike> {
     if (!this.session) {
       this.session = (async () => {
         const path = await this.deps.modelPath();
         try {
-          return await this.deps.ort.InferenceSession.create(path, {
+          return await this.runtime().InferenceSession.create(path, {
             graphOptimizationLevel: 'all',
           });
         } catch (e) {
+          if (e instanceof CutoutError) throw e; // e.g. the runtime itself failed to start (clear message already)
           throw new CutoutError(
             'model-load-failed',
             'The segmentation model could not be loaded. Reinstall the app or check the model file.',
@@ -90,7 +96,9 @@ export class OnnxSegmentationEngine implements ImageEngine {
       onProgress?.(0.4, 'Finding the object');
       const inputName = session.inputNames[0];
       if (!inputName) throw new Error('Model has no inputs');
-      const feeds = { [inputName]: new this.deps.ort.Tensor('float32', tensorData, [1, 3, N, N]) };
+      const feeds = {
+        [inputName]: new (this.runtime().Tensor)('float32', tensorData, [1, 3, N, N]),
+      };
       const outputs = await session.run(feeds);
       throwIfAborted(signal);
 

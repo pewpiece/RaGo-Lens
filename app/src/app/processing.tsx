@@ -123,6 +123,7 @@ export default function Processing() {
       {error ? (
         <View style={{ gap: spacing.md }}>
           <Banner tone="error">{error.message}</Banner>
+          <Muted>{`Details: ${error.code}${error.cause instanceof Error ? ` · ${error.cause.message}` : ''}`}</Muted>
           <Button
             label="Try again"
             kind="primary"
