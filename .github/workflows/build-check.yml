@@ -6,8 +6,6 @@ name: Build check (no secrets)
 on:
   push:
     tags: ['check-*']
-    # TEMPORARY: lets the first build run without a tag. Remove once the build is known to work.
-    branches: ['claude/new-session-3h6f6u']
   workflow_dispatch:
 
 jobs:

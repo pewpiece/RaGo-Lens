@@ -1,0 +1,53 @@
+name: Emulator debug
+
+# Builds an x86_64 APK, boots an Android emulator and opens every screen, reporting crashes with their native log.
+# Trigger: push to the working branch, a tag starting with "emu-", or "Run workflow". Read the "Run emulator test" step log.
+on:
+  push:
+    tags: ['emu-*']
+    branches: ['claude/new-session-3h6f6u']
+  workflow_dispatch:
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: app
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Fetch segmentation model (SHA-256 verified)
+        working-directory: .
+        run: ./scripts/fetch-model.sh
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install --clean
+      - name: Build APK (x86_64 for the emulator)
+        working-directory: app/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64 -Dorg.gradle.jvmargs=-Xmx4g
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run emulator test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          working-directory: .
+          script: ./scripts/emulator-test.sh app/android/app/build/outputs/apk/release/app-release.apk
