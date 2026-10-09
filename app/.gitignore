@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+coverage/
+*.keystore
+*.jks
+*.p12
+*.log
+.env*
+# the ONNX model is fetched by scripts/fetch-model.sh (verified by SHA-256), never committed
+assets/models/*.onnx

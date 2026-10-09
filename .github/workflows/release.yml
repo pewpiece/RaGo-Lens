@@ -1,0 +1,86 @@
+name: Release APK
+
+# Push a tag like v0.1.0 to build, sign and publish an APK as a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # ARM only keeps the APK small; add x86_64 for emulators.
+      ARCHS: arm64-v8a,armeabi-v7a
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Check signing secrets are present
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for v in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret $v (see docs/RELEASING.md)"; exit 1; fi
+          done
+
+      - name: Fetch segmentation model (SHA-256 verified)
+        working-directory: .
+        run: ./scripts/fetch-model.sh
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --ci
+
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build release APK (unsigned by us; Gradle uses the template debug key)
+        working-directory: app/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=$ARCHS
+
+      - name: Align and sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          IN="$(ls android/app/build/outputs/apk/release/*.apk | head -1)"
+          KS="$RUNNER_TEMP/release.keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KS"
+          OUT="rago-lens-${GITHUB_REF_NAME}.apk"
+          "$BT/zipalign" -p -f 4 "$IN" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
+            --out "$OUT" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify --print-certs "$OUT"
+          rm -f "$KS"
+          echo "APK_PATH=app/$OUT" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_PATH }}
+          generate_release_notes: true
