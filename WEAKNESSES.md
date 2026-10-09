@@ -47,6 +47,8 @@ Written honestly: **I could not build or run this app on an Android device or em
 - Android only (min SDK 26). iOS is not configured (share extension disabled).
 - Scan mode is a disabled placeholder. Phase 2 is not started.
 - Library has no search/sort/pagination (loads all rows). Single-item delete is via multi-select (long press).
+- Input photos are re-encoded to JPEG for processing, so a PNG with transparency is flattened before cut-out. Very large photos (50 MP+) depend on how
+  `expo-image-manipulator` decodes them; not tested.
 - Accessibility labels/roles are set, but TalkBack was never run.
 - "Retry with different settings" only offers the working-size cap (the engine choice is a Settings developer toggle).
 - Output size "original" means the working-size image (<= cap, default 2048), not necessarily the camera's full 12 MP.
@@ -56,6 +58,6 @@ Written honestly: **I could not build or run this app on an Android device or em
 - The third-party licence list in the app is a summary, not an inventory of every transitive dependency.
 
 ## What *is* verified (see `TEST_OUTPUT.txt`)
-Lint and typecheck clean; 174 tests pass, including real-Skia pixel tests (known mask gives known alpha, DstIn compositing, brush erase/restore,
+Lint and typecheck clean; all tests pass (count in `TEST_OUTPUT.txt`), including real-Skia pixel tests (known mask gives known alpha, DstIn compositing, brush erase/restore,
 soft edges, shadow, auto-crop geometry, size caps, PNG alpha detection and encoding round-trip), real-SQLite migrations and repository tests,
 ONNX engine tests with a fake runtime, cancellation/error paths, theme/settings stores and screen flows (denied permissions, failed saves, OOM, retry).
