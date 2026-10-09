@@ -97,6 +97,52 @@ describe('runScan', () => {
   });
 });
 
+describe('runScan contrast boost', () => {
+  it('feeds the boosted copy to the recogniser but keeps the original photo as the working image', async () => {
+    const enhance = jest.fn(async (u: string) => `${u}#boosted`);
+    const recognize = jest.fn(async () => ({ text: '', blocks: [] }));
+    const stages: string[] = [];
+    const r = await runScan(
+      {
+        uri: 'p',
+        script: 'latin',
+        engine: { id: 'x', label: 'x', recognize },
+        onProgress: (_, l) => stages.push(l),
+      },
+      { ...deps, enhance },
+    );
+    expect(recognize).toHaveBeenCalledWith('p#work#boosted', expect.anything());
+    expect(r.workingUri).toBe('p#work');
+    expect(stages).toContain('Improving contrast');
+  });
+
+  it('can be turned off', async () => {
+    const enhance = jest.fn(async (u: string) => `${u}#boosted`);
+    const recognize = jest.fn(async () => ({ text: '', blocks: [] }));
+    await runScan(
+      { uri: 'p', script: 'latin', enhance: false, engine: { id: 'x', label: 'x', recognize } },
+      { ...deps, enhance },
+    );
+    expect(enhance).not.toHaveBeenCalled();
+    expect(recognize).toHaveBeenCalledWith('p#work', expect.anything());
+  });
+
+  it('falls back to the plain photo when the boost fails', async () => {
+    const recognize = jest.fn(async () => ({ text: 'ok', blocks: [] }));
+    const r = await runScan(
+      { uri: 'p', script: 'latin', engine: { id: 'x', label: 'x', recognize } },
+      {
+        ...deps,
+        enhance: async () => {
+          throw new Error('out of memory');
+        },
+      },
+    );
+    expect(recognize).toHaveBeenCalledWith('p#work', expect.anything());
+    expect(r.foundText).toBe(true);
+  });
+});
+
 describe('MlKitOcrEngine', () => {
   const native = (impl: MlKitModule['recognize']): MlKitModule => ({ recognize: impl });
 

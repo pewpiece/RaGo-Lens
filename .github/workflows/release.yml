@@ -16,8 +16,9 @@ jobs:
       run:
         working-directory: app
     env:
-      # ARM only keeps the APK small; add x86_64 for emulators.
-      ARCHS: arm64-v8a,armeabi-v7a
+      # arm64 covers practically every phone made since ~2017 and is the only ARM build tested in CI so far.
+      # Add armeabi-v7a (old 32-bit phones) or x86_64 (emulators) here if needed.
+      ARCHS: arm64-v8a
     steps:
       - uses: actions/checkout@v4
 

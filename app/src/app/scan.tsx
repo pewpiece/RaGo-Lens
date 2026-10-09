@@ -13,7 +13,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { Banner, Button, Header, Muted, Screen, Segmented } from '@/components/ui';
+import { Banner, Button, Header, Muted, Screen, Segmented, Toggle } from '@/components/ui';
 import { isScanCancelled, toScanError, type ScanError } from '@/scan/errors';
 import { deviceSaveDeps, deviceScanDeps, getOcrEngine } from '@/scan/factory';
 import { markdownToPlain } from '@/scan/markdown';
@@ -36,12 +36,14 @@ export default function ScanScreen() {
   const { tokens: t } = useTheme();
   const sourceUri = useScanSession((s) => s.sourceUri);
   const scriptOverride = useScanSession((s) => s.scriptOverride);
+  const enhanceOverride = useScanSession((s) => s.enhanceOverride);
   const preloaded = useScanSession((s) => s.preloaded);
   const result = useScanSession((s) => s.result);
   const text = useScanSession((s) => s.text);
   const itemId = useScanSession((s) => s.itemId);
   const notice = useScanSession((s) => s.notice);
   const settingsScript = useSettingsStore((s) => s.scanScript);
+  const settingsEnhance = useSettingsStore((s) => s.scanEnhance);
   const useMock = useSettingsStore((s) => s.useMockEngine);
 
   const [phase, setPhase] = useState<Phase>(preloaded ? 'done' : 'running');
@@ -51,10 +53,12 @@ export default function ScanScreen() {
   const [attempt, setAttempt] = useState(0);
   const [retryOpen, setRetryOpen] = useState(false);
   const [retryScript, setRetryScript] = useState<ScanScript>(scriptOverride ?? settingsScript);
+  const [retryEnhance, setRetryEnhance] = useState<boolean>(enhanceOverride ?? settingsEnhance);
   const [toast, setToast] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const [shimmer] = useState(() => new Animated.Value(0));
   const script = scriptOverride ?? settingsScript;
+  const enhance = enhanceOverride ?? settingsEnhance;
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -92,6 +96,7 @@ export default function ScanScreen() {
           {
             uri: sourceUri,
             script,
+            enhance,
             engine: getOcrEngine(useMock),
             signal: controller.signal,
             onProgress: (f, l) => {
@@ -123,7 +128,7 @@ export default function ScanScreen() {
       }
     })();
     return () => controller.abort();
-  }, [sourceUri, script, useMock, attempt, preloaded]);
+  }, [sourceUri, script, enhance, useMock, attempt, preloaded]);
 
   // Save edits to the library shortly after the user stops typing.
   useEffect(() => {
@@ -162,7 +167,7 @@ export default function ScanScreen() {
     setPhase('running');
     setProgress(0);
     setLabel('Starting');
-    useScanSession.getState().start(sourceUri, retryScript);
+    useScanSession.getState().start(sourceUri, retryScript, retryEnhance);
     setAttempt((a) => a + 1);
   };
 
@@ -332,7 +337,14 @@ export default function ScanScreen() {
               onChange={setRetryScript}
               options={SCRIPTS}
             />
-            <View style={{ height: spacing.lg }} />
+            <View style={{ height: spacing.md }} />
+            <Toggle
+              label="Boost faint writing"
+              hint="Raises the contrast of pale pencil or pen before reading."
+              value={retryEnhance}
+              onChange={setRetryEnhance}
+            />
+            <View style={{ height: spacing.md }} />
             <Button label="Run again" kind="primary" onPress={retry} />
             <View style={{ height: spacing.sm }} />
             <Button label="Cancel" kind="ghost" onPress={() => setRetryOpen(false)} />

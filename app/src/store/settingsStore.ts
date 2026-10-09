@@ -11,6 +11,7 @@ const KEYS = {
   workingSize: 'working_size_cap',
   mockEngine: 'dev_mock_engine',
   scanScript: 'scan_script',
+  scanEnhance: 'scan_enhance',
 } as const;
 
 export interface SettingsState {
@@ -22,11 +23,14 @@ export interface SettingsState {
   useMockEngine: boolean;
   /** Writing system the Scan recogniser reads. */
   scanScript: ScanScript;
+  /** Boost contrast of faint writing before Scan reads the page. */
+  scanEnhance: boolean;
   hydrate(): Promise<void>;
   setExportDefaults(patch: Partial<ExportOptions>): Promise<void>;
   setWorkingSizeCap(px: number): Promise<void>;
   setUseMockEngine(on: boolean): Promise<void>;
   setScanScript(script: ScanScript): Promise<void>;
+  setScanEnhance(on: boolean): Promise<void>;
 }
 
 export function clampWorkingSize(px: number): number {
@@ -48,19 +52,22 @@ export function createSettingsStore(kv: KeyValueStorage) {
     workingSizeCap: DEFAULT_WORKING_SIZE,
     useMockEngine: false,
     scanScript: 'latin',
+    scanEnhance: true,
     async hydrate() {
       try {
-        const [exp, size, mock, script] = await Promise.all([
+        const [exp, size, mock, script, enhance] = await Promise.all([
           kv.get(KEYS.exportDefaults),
           kv.get(KEYS.workingSize),
           kv.get(KEYS.mockEngine),
           kv.get(KEYS.scanScript),
+          kv.get(KEYS.scanEnhance),
         ]);
         set({
           exportDefaults: parseExportOptions(exp),
           workingSizeCap: size ? clampWorkingSize(Number(size)) : DEFAULT_WORKING_SIZE,
           useMockEngine: mock === '1',
           scanScript: script === 'devanagari' ? 'devanagari' : 'latin',
+          scanEnhance: enhance !== '0',
           hydrated: true,
         });
       } catch {
@@ -76,6 +83,10 @@ export function createSettingsStore(kv: KeyValueStorage) {
       const v = clampWorkingSize(px);
       set({ workingSizeCap: v });
       await safeSet(KEYS.workingSize, String(v));
+    },
+    async setScanEnhance(on) {
+      set({ scanEnhance: on });
+      await safeSet(KEYS.scanEnhance, on ? '1' : '0');
     },
     async setScanScript(script) {
       set({ scanScript: script });

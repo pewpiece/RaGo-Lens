@@ -7,6 +7,8 @@ export interface ScanSessionState {
   sourceUri: string | null;
   /** Script chosen via "Retry" for this run only; falls back to the Settings choice. */
   scriptOverride: ScanScript | null;
+  /** Contrast boost chosen via "Retry" for this run only; falls back to the Settings choice. */
+  enhanceOverride: boolean | null;
   result: ScanResult | null;
   /** Editable text shown in the editor (markdown). */
   text: string;
@@ -14,7 +16,7 @@ export interface ScanSessionState {
   /** True when opened from the library: skip recognition, show the saved text. */
   preloaded: boolean;
   notice: string | null;
-  start(uri: string, scriptOverride?: ScanScript | null): void;
+  start(uri: string, scriptOverride?: ScanScript | null, enhanceOverride?: boolean | null): void;
   setResult(result: ScanResult, itemId: string | null): void;
   setText(text: string): void;
   setNotice(n: string | null): void;
@@ -25,6 +27,7 @@ export interface ScanSessionState {
 const blank = {
   sourceUri: null,
   scriptOverride: null,
+  enhanceOverride: null,
   result: null,
   text: '',
   itemId: null,
@@ -34,7 +37,8 @@ const blank = {
 
 export const useScanSession = create<ScanSessionState>()((set) => ({
   ...blank,
-  start: (uri, scriptOverride = null) => set({ ...blank, sourceUri: uri, scriptOverride }),
+  start: (uri, scriptOverride = null, enhanceOverride = null) =>
+    set({ ...blank, sourceUri: uri, scriptOverride, enhanceOverride }),
   setResult: (result, itemId) => set({ result, itemId, text: result.markdown }),
   setText: (text) => set({ text }),
   setNotice: (notice) => set({ notice }),

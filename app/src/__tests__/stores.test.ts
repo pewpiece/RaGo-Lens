@@ -75,6 +75,17 @@ describe('settings store', () => {
     expect(b.getState().useMockEngine).toBe(true);
   });
 
+  it('persists the Scan options (writing system and contrast boost)', async () => {
+    const kv = memoryKv();
+    const a = createSettingsStore(kv);
+    expect(a.getState()).toMatchObject({ scanScript: 'latin', scanEnhance: true });
+    await a.getState().setScanScript('devanagari');
+    await a.getState().setScanEnhance(false);
+    const b = createSettingsStore(kv);
+    await b.getState().hydrate();
+    expect(b.getState()).toMatchObject({ scanScript: 'devanagari', scanEnhance: false });
+  });
+
   it('clamps the working size', () => {
     expect(clampWorkingSize(10)).toBe(512);
     expect(clampWorkingSize(99999)).toBe(4096);

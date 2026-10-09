@@ -120,7 +120,7 @@ export default function Capture() {
           setError('The camera could not start. Pick a photo from your gallery instead.')
         }
       />
-      <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
+      <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.topBar}>
           <RoundButton
             label="Back"
@@ -139,7 +139,14 @@ export default function Capture() {
             <Banner tone="error">{error}</Banner>
           </View>
         ) : null}
-        <View style={styles.bottomBar}>
+        {/* pushes the controls to the bottom of the screen, like every camera app */}
+        <View testID="camera-spacer" style={{ flex: 1 }} />
+        <Text style={styles.hint}>
+          {scan
+            ? 'Hold the page flat, fill the frame, use good light'
+            : 'Place the object on a plain surface with good light'}
+        </Text>
+        <View testID="camera-controls" style={styles.bottomBar}>
           <RoundButton
             label="Pick from gallery"
             glyph="▦"
@@ -159,11 +166,6 @@ export default function Capture() {
           </Pressable>
           <View style={{ width: 52 }} />
         </View>
-        <Text style={styles.hint}>
-          {scan
-            ? 'Hold the page flat, fill the frame, use good light'
-            : 'Place the object on a plain surface with good light'}
-        </Text>
       </SafeAreaView>
     </View>
   );
@@ -195,6 +197,8 @@ function RoundButton({
 const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', padding: spacing.lg },
   bottomBar: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    paddingTop: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

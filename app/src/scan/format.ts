@@ -1,11 +1,5 @@
-import type {
-  FormattedKind,
-  FormattedLine,
-  FormattedScan,
-  OcrBlock,
-  OcrLine,
-  OcrResult,
-} from './types';
+import { mergeRows, readingOrder, type FlatLine } from './layout';
+import type { FormattedKind, FormattedLine, FormattedScan, OcrBlock, OcrResult } from './types';
 
 const BULLET_RE = /^\s*(?:[-–—•·●○▪■□◦*>»]|o(?=\s)|\+)\s*/;
 const NUMBER_RE = /^\s*(\d{1,3})\s*[.):]\s+/;
@@ -21,6 +15,8 @@ interface Row {
   height: number;
   hasFrame: boolean;
   newBlock: boolean;
+  /** First line of a column or band: the gap to the previous line is a layout jump, not a paragraph gap. */
+  sectionStart: boolean;
 }
 
 const median = (xs: number[]): number => {
@@ -41,25 +37,32 @@ export function cleanLine(s: string): string {
 }
 
 function toRows(blocks: OcrBlock[]): Row[] {
-  const rows: Row[] = [];
-  blocks.forEach((b) => {
-    b.lines.forEach((l: OcrLine, i) => {
+  const flat: FlatLine[] = [];
+  blocks.forEach((b, blockId) => {
+    b.lines.forEach((l) => {
       const text = cleanLine(l.text);
-      if (!text) return;
-      const f = l.frame;
-      rows.push({
-        text,
-        left: f?.left ?? 0,
-        top: f?.top ?? 0,
-        right: f ? f.left + f.width : 0,
-        bottom: f ? f.top + f.height : 0,
-        height: f?.height ?? 0,
-        hasFrame: !!f,
-        newBlock: i === 0,
-      });
+      if (text) flat.push({ text, frame: l.frame, blockId });
     });
   });
-  return rows;
+  // multi-column pages are read column by column; split rows (label + expression) are re-joined
+  const ordered = mergeRows(readingOrder(flat));
+  let prevBlock = -1;
+  return ordered.map((l) => {
+    const f = l.frame;
+    const row: Row = {
+      text: l.text,
+      left: f?.left ?? 0,
+      top: f?.top ?? 0,
+      right: f ? f.left + f.width : 0,
+      bottom: f ? f.top + f.height : 0,
+      height: f?.height ?? 0,
+      hasFrame: !!f,
+      newBlock: l.sectionStart || l.blockId !== prevBlock,
+      sectionStart: l.sectionStart,
+    };
+    prevBlock = l.blockId;
+    return row;
+  });
 }
 
 /** Strip a list marker, returning its kind (or 'text' when there is none). */
@@ -108,7 +111,8 @@ export function formatScan(result: OcrResult): FormattedScan {
   rows.forEach((r, idx) => {
     const marker = parseMarker(r.text);
     const gap = prev && r.hasFrame && prev.hasFrame ? r.top - prev.bottom : 0;
-    const paragraphBreak = idx > 0 && (r.newBlock ? gap > 0.55 * H : gap > 1.0 * H);
+    const paragraphBreak =
+      idx > 0 && (r.sectionStart || (r.newBlock ? gap > 0.55 * H : gap > 1.0 * H));
 
     // Heading: clearly larger text (or all-caps) that is short and not a list item.
     let kind: FormattedKind = marker.kind;

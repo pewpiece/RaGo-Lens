@@ -1,6 +1,10 @@
 import { devicePrepDeps } from '@/engine/imagePrepDevice';
 import { prepareWorkingImage } from '@/engine/imagePrep';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { ImageFormat } from '@shopify/react-native-skia';
+import { loadImage } from '@/lib/loadImage';
+import { tempName, writeCacheFile } from '@/lib/files';
+import { enhanceForOcr } from './enhance';
 import { MlKitOcrEngine } from './mlkitEngine';
 import { MockOcrEngine } from './mockOcr';
 import type { ScanDeps } from './pipeline';
@@ -17,6 +21,10 @@ export function getOcrEngine(useMock: boolean): OcrEngine {
 
 export const deviceScanDeps: ScanDeps = {
   prepare: (uri, cap) => prepareWorkingImage(uri, cap, devicePrepDeps),
+  async enhance(uri) {
+    const out = enhanceForOcr(await loadImage(uri));
+    return writeCacheFile(tempName('ocr', 'jpg'), out.encodeToBytes(ImageFormat.JPEG, 92));
+  },
 };
 
 export const deviceSaveDeps: ScanSaveDeps = {

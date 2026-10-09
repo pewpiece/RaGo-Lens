@@ -65,7 +65,7 @@ A user-importable model file (from storage) is not built yet but the engine take
 ## Scan mode
 Photo of a notebook page (camera or gallery or shared in) -> Google ML Kit text recognition on the phone -> structure -> editable Markdown with
 headings, bullet and numbered lists, nesting and paragraphs. Copy (Markdown), Copy plain, Share, and results are saved in the Library (a `scan` item with the photo, a `.md`
-file and a thumbnail). English/Latin and Devanagari can be chosen in Settings or with Retry. Printed text and neat handwriting work best; messy handwriting will be unreliable.
+file and a thumbnail). English/Latin and Devanagari can be chosen in Settings or with Retry. Printed text and neat handwriting work best; messy handwriting will be unreliable, and maths notation (exponents, fractions) is not supported. Two-column pages are read column by column and faint pencil gets a contrast boost before reading.
 Code: `app/src/scan/` (engine wrapper, formatter, pipeline) and `app/src/app/scan.tsx`.
 
 ## Modes registry

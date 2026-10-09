@@ -183,6 +183,22 @@ describe('Scan screen', () => {
     await useSettingsStore.getState().setScanScript('latin');
   });
 
+  it('boosts contrast by default and lets Retry switch it off', async () => {
+    const enhanceSpy = jest.fn(async (u: string) => u);
+    jest.requireMock('@/scan/factory').deviceScanDeps.enhance = enhanceSpy;
+    useScanSession.getState().start('file:///page.jpg');
+    await render(wrap(<ScanScreen />));
+    await screen.findByTestId('scan-text');
+    expect(enhanceSpy).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Retry' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Boost faint writing' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Run again' }));
+    await waitFor(() => expect(useScanSession.getState().enhanceOverride).toBe(false));
+    await screen.findByTestId('scan-text');
+    expect(enhanceSpy).toHaveBeenCalledTimes(1); // not called again
+    delete jest.requireMock('@/scan/factory').deviceScanDeps.enhance;
+  });
+
   it('goes home when there is nothing to scan', async () => {
     await render(wrap(<ScanScreen />));
     expect(mockReplace).toHaveBeenCalledWith('/');

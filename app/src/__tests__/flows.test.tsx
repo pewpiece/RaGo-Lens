@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Alert, Linking } from 'react-native';
 import Capture from '@/app/capture';
 import ExportScreen from '@/app/export';
@@ -227,6 +227,21 @@ describe('Capture permissions', () => {
     expect(open).toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Allow camera' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Pick from gallery' })).toBeTruthy();
+  });
+
+  it('puts the shutter row at the bottom, below a flexible spacer (not in the middle)', async () => {
+    mockCameraPermission = { granted: true, canAskAgain: true };
+    await render(wrap(<Capture />));
+    const spacer = screen.getByTestId('camera-spacer');
+    const controls = screen.getByTestId('camera-controls');
+    expect(spacer.props.style).toMatchObject({ flex: 1 });
+    // the controls come after the spacer inside the same container, so they sit at the bottom edge
+    const parent = controls.parent!;
+    const kids = parent.children as unknown as { props?: { testID?: string } }[];
+    const order = kids.map((k) => k.props?.testID).filter(Boolean);
+    expect(order.indexOf('camera-spacer')).toBeLessThan(order.indexOf('camera-controls'));
+    expect(order[order.length - 1]).toBe('camera-controls'); // last element = bottom of the screen
+    expect(within(controls).getByTestId('shutter')).toBeTruthy();
   });
 
   it('shows the camera controls when granted', async () => {

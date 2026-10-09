@@ -6,6 +6,8 @@ import type { FormattedScan, OcrEngine, ScanScript } from './types';
 export interface ScanDeps {
   /** Upright JPEG with its long edge capped (text needs more pixels than a cut-out). */
   prepare: (uri: string, cap: number) => Promise<PreparedImage>;
+  /** Optional: returns a contrast-boosted copy of the photo to feed the recogniser (faint pencil on tinted paper). */
+  enhance?: (uri: string) => Promise<string>;
 }
 
 export interface ScanResult {
@@ -33,20 +35,33 @@ export interface RunScanOptions {
   engine: OcrEngine;
   signal?: AbortSignal;
   cap?: number;
+  /** Boost contrast before recognition (default true when the device supports it). */
+  enhance?: boolean;
   onProgress?: (fraction: number, label: string) => void;
 }
 
 /** photo -> upright, size-capped copy -> text recognition -> structure (headings, lists, paragraphs). */
 export async function runScan(opts: RunScanOptions, deps: ScanDeps): Promise<ScanResult> {
-  const { uri, script, engine, signal, onProgress, cap = SCAN_WORKING_CAP } = opts;
+  const { uri, script, engine, signal, onProgress, cap = SCAN_WORKING_CAP, enhance = true } = opts;
   try {
     throwIfScanAborted(signal);
     onProgress?.(0.05, 'Reading photo');
     const prepared = await deps.prepare(uri, cap);
     throwIfScanAborted(signal);
 
+    let ocrUri = prepared.uri;
+    if (enhance && deps.enhance) {
+      onProgress?.(0.2, 'Improving contrast');
+      try {
+        ocrUri = await deps.enhance(prepared.uri);
+      } catch {
+        ocrUri = prepared.uri; // never fail the scan because the optional boost failed
+      }
+      throwIfScanAborted(signal);
+    }
+
     onProgress?.(0.3, 'Reading the text');
-    const raw = await engine.recognize(prepared.uri, { script, signal });
+    const raw = await engine.recognize(ocrUri, { script, signal });
     throwIfScanAborted(signal);
 
     onProgress?.(0.9, 'Formatting');

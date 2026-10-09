@@ -47,6 +47,8 @@ Written honestly: **I could not build or run this app on an Android device or em
 - Verified in CI on an emulator only (real ML Kit on a printed sample page); **not tried on a real notebook photo or on handwriting**. Messy cursive and mixed languages will often come out wrong. Always re-read the result.
 - Devanagari recognition is exposed but untested on real Devanagari pages. Mixed Latin + Devanagari pages need a Retry with the other setting.
 - The formatter guesses structure from line positions. Skewed or curved pages, photos taken at an angle, and notebooks with ruled lines running through the text can produce wrong headings, merged lines or wrong nesting. The text is editable for that reason.
+- **Maths notation is not supported.** Exponents, stacked fractions (numerator over denominator), pi and special symbols come out as garbled letters or split lines. Formula sheets are the worst case for this recogniser.
+- Column detection needs a clear vertical gap; pages with three or more columns, tables or text wrapped around pictures may still read in the wrong order. Pages photographed at a steep angle read worse than flat ones.
 - ML Kit is proprietary (free under Google's terms) and bundles five script models, so the APK is larger than the cut-out alone needed.
 - No export to a file yet: Copy, Copy plain and Share (text) only.
 

@@ -89,6 +89,11 @@ to confirm that path exists but could not run it on a device.
   (open, and the runtime already works here, but needs a detector, recogniser and a lot of post-processing code I cannot validate on a phone), cloud OCR (violates the no-network rule).
 - **Formatting is geometry based** (`scan/format.ts`, unit tested): paragraph breaks from vertical gaps, headings from larger or all-caps standalone lines, list markers (`- • * o 1. a)`) and nesting from left offset,
   soft-wrapped sentences re-joined only when a line runs to the right margin and the next starts lower-case (hyphenated breaks repaired). Notebook pages are mostly one thought per line, so it keeps line breaks otherwise.
+- **Two-column pages** (found with a real notebook photo): ML Kit returns blocks in its own order, which mixed the columns of a formula sheet. `scan/layout.ts` finds the vertical gutter between columns
+  (ignoring full-width titles), then reads each column top to bottom, left before right, with titles acting as separators. Lines that the recogniser split from one visual row (a label and its
+  expression) are re-joined. Pages without a gutter keep the recogniser's order. Tested with a layout modelled on that photo.
+- **Faint pencil on tinted paper:** before recognition the page is converted to grey and contrast-stretched between its 2nd and 98th luminance percentile (`scan/enhance.ts`, Skia, tested on real pixels).
+  Only the recogniser sees the boosted copy; the saved photo is unchanged. On by default, switchable in Settings and Retry.
 - Photos are capped at 3072 px on the long edge for Scan (text needs more pixels than a cut-out).
 - Scan results are `scan` rows in the same library table; `result_uri` is the markdown file, `thumb_uri` a JPEG thumbnail, `original_uri` the page photo. Edits in the editor are saved to the file after 700 ms.
 - Same lazy-load safety as the ONNX runtime: a missing native module becomes a readable error, not a crash. A built-in diagnostics sample page checks real recognition on the device (Settings > Run diagnostics).

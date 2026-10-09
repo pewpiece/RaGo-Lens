@@ -32,6 +32,8 @@ export default function Settings() {
   const setCap = useSettingsStore((s) => s.setWorkingSizeCap);
   const scanScript = useSettingsStore((s) => s.scanScript);
   const setScanScript = useSettingsStore((s) => s.setScanScript);
+  const scanEnhance = useSettingsStore((s) => s.scanEnhance);
+  const setScanEnhance = useSettingsStore((s) => s.setScanEnhance);
   const mock = useSettingsStore((s) => s.useMockEngine);
   const setMock = useSettingsStore((s) => s.setUseMockEngine);
   const [notice, setNotice] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
@@ -123,6 +125,12 @@ export default function Settings() {
           ]}
         />
       </Row>
+      <Toggle
+        label="Boost faint writing"
+        hint="Raises the contrast of pale pencil or pen before Scan reads the page."
+        value={scanEnhance}
+        onChange={(v) => void setScanEnhance(v)}
+      />
 
       <SectionTitle>Processing</SectionTitle>
       <Row
