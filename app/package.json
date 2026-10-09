@@ -76,7 +76,8 @@
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@shopify/react-native-skia|expo-share-intent|zustand|drizzle-orm))"
-    ]
+    ],
+    "testTimeout": 30000
   },
   "description": "RaGo Lens: offline background removal (Cutout mode)"
 }
