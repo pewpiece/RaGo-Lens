@@ -1,4 +1,5 @@
 import { Asset } from 'expo-asset';
+import { File, Paths } from 'expo-file-system';
 import { devicePipelineDeps, getEngine } from '@/engine/factory';
 import { runCutout } from '@/engine/pipeline';
 import { imageFromBytes, readAlpha } from '@/engine/skiaOps';
@@ -6,7 +7,10 @@ import { DEFAULT_EXPORT_OPTIONS } from '@/export/options';
 import { pngHasAlphaChannel } from '@/export/png';
 import { renderExport } from '@/scene/exportRender';
 
-const SAMPLE = require('../../assets/samples/sample.jpg') as number;
+// Stored as .bin on purpose: for image types Expo returns only a drawable resource NAME on Android (not a file path),
+// which image decoders cannot open. Non-image assets are copied to a real file, which we then copy to a .jpg path.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const SAMPLE = require('../../assets/samples/sample.bin') as number;
 
 export interface SelfTestResult {
   passed: boolean;
@@ -31,7 +35,11 @@ export async function runSelfTest(onLine?: (line: string) => void): Promise<Self
     log('start');
     const asset = Asset.fromModule(SAMPLE);
     await asset.downloadAsync();
-    const uri = asset.localUri ?? asset.uri;
+    if (!asset.localUri) throw new Error('sample photo has no local file');
+    const jpg = new File(Paths.cache, 'selftest-sample.jpg');
+    if (jpg.exists) jpg.delete();
+    new File(asset.localUri).copySync(jpg);
+    const uri = jpg.uri;
     log(`sample photo ready ${lap()}`);
 
     const engine = getEngine(false);
