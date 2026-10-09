@@ -16,7 +16,9 @@
         "backgroundColor": "#0E1116"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -41,22 +43,48 @@
       ],
       [
         "expo-camera",
-        { "cameraPermission": "RaGo Lens uses the camera to photograph the object you want to cut out.", "recordAudioAndroid": false }
+        {
+          "cameraPermission": "RaGo Lens uses the camera to photograph the object you want to cut out.",
+          "recordAudioAndroid": false
+        }
       ],
       [
         "expo-image-picker",
-        { "photosPermission": "RaGo Lens lets you pick a photo to cut out.", "cameraPermission": false, "microphonePermission": false }
+        {
+          "photosPermission": "RaGo Lens lets you pick a photo to cut out.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ],
       [
         "expo-media-library",
-        { "savePhotosPermission": "RaGo Lens saves your finished cut-outs to your gallery.", "isAccessMediaLocationEnabled": false }
+        {
+          "savePhotosPermission": "RaGo Lens saves your finished cut-outs to your gallery.",
+          "isAccessMediaLocationEnabled": false
+        }
       ],
       "expo-sqlite",
       "expo-system-ui",
-      ["expo-build-properties", { "android": { "minSdkVersion": 26 } }],
-      ["expo-share-intent", { "androidIntentFilters": ["image/*"], "androidMainActivityAttributes": { "launchMode": "singleTask" } }],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": [
+            "image/*"
+          ]
+        }
+      ],
       "onnxruntime-react-native"
     ],
-    "experiments": { "typedRoutes": false }
+    "experiments": {
+      "typedRoutes": false
+    }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "name": "rago-lens-verify-model",
+  "private": true,
+  "description": "Desktop check that the bundled ONNX model + the app's TypeScript pre/post-processing produce a sensible cut-out. Not part of the app.",
+  "scripts": {
+    "verify": "tsx verify.ts"
+  },
+  "dependencies": {
+    "jpeg-js": "0.4.4",
+    "onnxruntime-web": "1.24.3",
+    "pngjs": "7.0.0",
+    "tsx": "4.21.0"
+  }
+}
