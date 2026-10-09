@@ -181,7 +181,9 @@ describe('toCutoutError', () => {
     expect(toCutoutError(new Error('weird')).code).toBe('inference-failed');
     expect(toCutoutError(new Error('kaboom in the living room')).code).toBe('inference-failed');
     expect(toCutoutError(new Error('std::bad_alloc')).code).toBe('out-of-memory');
-    expect(toCutoutError(new Error('Failed to allocate 40000000 bytes')).code).toBe('out-of-memory');
+    expect(toCutoutError(new Error('Failed to allocate 40000000 bytes')).code).toBe(
+      'out-of-memory',
+    );
     const e = new CutoutError('model-missing', 'x');
     expect(toCutoutError(e)).toBe(e);
   });

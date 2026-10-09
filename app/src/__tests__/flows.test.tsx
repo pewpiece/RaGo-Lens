@@ -16,6 +16,7 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockItems: unknown[] = [];
+let mockParams: Record<string, string> = {};
 let mockCameraPermission: { granted: boolean; canAskAgain: boolean } | null = null;
 const mockRequestPermission = jest.fn();
 
@@ -27,6 +28,7 @@ jest.mock('expo-router', () => ({
     canGoBack: () => true,
   },
   useFocusEffect: jest.fn(),
+  useLocalSearchParams: () => mockParams,
 }));
 jest.mock('@/store/instances', () => {
   const { memoryKv } = jest.requireActual('@/db/kv');
@@ -116,6 +118,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (runCutout as jest.Mock).mockReset(); // drop any queued one-shot results from earlier tests
   mockItems = [];
+  mockParams = {};
   mockCameraPermission = null;
   useSession.getState().clear();
 });
@@ -374,5 +377,37 @@ describe('Export error handling', () => {
     await setup();
     await fireEvent.press(screen.getByRole('radio', { name: 'Colour' }));
     expect(screen.getAllByRole('radio', { name: /^Colour #/ }).length).toBeGreaterThan(3);
+  });
+});
+
+describe('Capture in Scan mode', () => {
+  it('starts a scan (not a cut-out) when a gallery photo is picked', async () => {
+    mockParams = { mode: 'scan' };
+    mockCameraPermission = { granted: false, canAskAgain: true };
+    const ImagePicker = jest.requireMock('expo-image-picker');
+    ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///page.jpg' }],
+    });
+    const { useScanSession } = jest.requireActual('@/store/scanSession');
+    await render(wrap(<Capture />));
+    expect(screen.getByText('Scan')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Pick from gallery' }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/scan'));
+    expect(useScanSession.getState().sourceUri).toBe('file:///page.jpg');
+    expect(useSession.getState().sourceUri).toBeNull();
+  });
+
+  it('keeps cut-out behaviour without the mode parameter', async () => {
+    mockCameraPermission = { granted: false, canAskAgain: true };
+    const ImagePicker = jest.requireMock('expo-image-picker');
+    ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///obj.jpg' }],
+    });
+    await render(wrap(<Capture />));
+    await fireEvent.press(screen.getByRole('button', { name: 'Pick from gallery' }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/processing'));
+    expect(useSession.getState().sourceUri).toBe('file:///obj.jpg');
   });
 });

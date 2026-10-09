@@ -3,27 +3,33 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions, type FlashMode } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Banner, Body, Button, Card, Header, Muted, Screen } from '@/components/ui';
+import { useScanSession } from '@/store/scanSession';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radii, spacing } from '@/theme/tokens';
 
-function startProcessing(uri: string) {
-  useSession.getState().setSource(uri);
-  router.push('/processing');
+function startProcessing(uri: string, scan: boolean) {
+  if (scan) {
+    useScanSession.getState().start(uri);
+    router.push('/scan');
+  } else {
+    useSession.getState().setSource(uri);
+    router.push('/processing');
+  }
 }
 
 /** Opens the system photo picker. On Android 13+ this needs no storage permission. */
-async function pickFromGallery(onError: (m: string) => void) {
+async function pickFromGallery(scan: boolean, onError: (m: string) => void) {
   try {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 1,
       allowsEditing: false,
     });
-    if (!res.canceled && res.assets[0]) startProcessing(res.assets[0].uri);
+    if (!res.canceled && res.assets[0]) startProcessing(res.assets[0].uri, scan);
   } catch {
     onError('Could not open your gallery. Please try again.');
   }
@@ -31,6 +37,8 @@ async function pickFromGallery(onError: (m: string) => void) {
 
 export default function Capture() {
   const { tokens: t } = useTheme();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const scan = mode === 'scan';
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [flash, setFlash] = useState<FlashMode>('off');
@@ -44,7 +52,7 @@ export default function Capture() {
     try {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       const pic = await camera.current.takePictureAsync({ quality: 1, exif: false });
-      startProcessing(pic.uri);
+      startProcessing(pic.uri, scan);
     } catch {
       setError('The photo could not be taken. Try again, or pick one from your gallery.');
     } finally {
@@ -54,7 +62,7 @@ export default function Capture() {
 
   if (!permission) {
     return (
-      <Screen header={<Header title="Cutout" />}>
+      <Screen header={<Header title={scan ? 'Scan' : 'Cutout'} />}>
         <Muted>Checking camera access…</Muted>
       </Screen>
     );
@@ -63,13 +71,13 @@ export default function Capture() {
   if (!permission.granted) {
     const blocked = !permission.canAskAgain;
     return (
-      <Screen header={<Header title="Cutout" />}>
+      <Screen header={<Header title={scan ? 'Scan' : 'Cutout'} />}>
         <Card>
           <Body style={{ fontWeight: '700', marginBottom: spacing.sm }}>Camera access is off</Body>
           <Muted>
             {blocked
               ? 'Camera permission was denied. You can allow it in the phone settings, or just pick a photo from your gallery.'
-              : 'Allow the camera to photograph an object, or pick a photo from your gallery instead.'}
+              : `Allow the camera to photograph ${scan ? 'a page' : 'an object'}, or pick a photo from your gallery instead.`}
           </Muted>
           <View style={{ height: spacing.lg }} />
           {blocked ? (
@@ -89,7 +97,7 @@ export default function Capture() {
           <Button
             label="Pick from gallery"
             kind={blocked ? 'primary' : 'secondary'}
-            onPress={() => void pickFromGallery(setError)}
+            onPress={() => void pickFromGallery(scan, setError)}
           />
         </Card>
         {error ? (
@@ -135,7 +143,7 @@ export default function Capture() {
           <RoundButton
             label="Pick from gallery"
             glyph="▦"
-            onPress={() => void pickFromGallery(setError)}
+            onPress={() => void pickFromGallery(scan, setError)}
           />
           <Pressable
             testID="shutter"
@@ -151,7 +159,11 @@ export default function Capture() {
           </Pressable>
           <View style={{ width: 52 }} />
         </View>
-        <Text style={styles.hint}>Place the object on a plain surface with good light</Text>
+        <Text style={styles.hint}>
+          {scan
+            ? 'Hold the page flat, fill the frame, use good light'
+            : 'Place the object on a plain surface with good light'}
+        </Text>
       </SafeAreaView>
     </View>
   );

@@ -14,7 +14,7 @@ export interface ModeDefinition {
   route: string | null;
   enabled: boolean;
   /** Engine kind the mode runs. Phase 2 will add 'ocr'. */
-  engine: 'segmentation' | null;
+  engine: 'segmentation' | 'ocr' | null;
   glyph: string;
 }
 
@@ -40,9 +40,9 @@ export const MODES: readonly ModeDefinition[] = [
     subtitle: 'Notebook photo to formatted text',
     accent: 'accentScan',
     onAccent: 'onAccentScan',
-    route: null,
-    enabled: false,
-    engine: null,
+    route: '/capture?mode=scan',
+    enabled: true,
+    engine: 'ocr',
     glyph: '☰',
   },
 ];

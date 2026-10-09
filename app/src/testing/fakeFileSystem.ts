@@ -32,6 +32,11 @@ export function fakeFileSystem() {
         typeof content === 'string' ? new TextEncoder().encode(content) : content,
       );
     }
+    async text() {
+      const b = files.get(this.uri);
+      if (!b) throw new Error('not found');
+      return new TextDecoder().decode(b);
+    }
     async bytes() {
       const b = files.get(this.uri);
       if (!b) throw new Error('not found');

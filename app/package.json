@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@react-native-ml-kit/text-recognition": "2.0.0",
     "@shopify/react-native-skia": "2.6.2",
     "babel-preset-expo": "57.0.14",
     "drizzle-orm": "0.45.4",

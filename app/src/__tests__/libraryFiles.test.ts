@@ -69,7 +69,7 @@ describe('library storage (fake filesystem, real SQLite)', () => {
     }
     expect(fs.__files.has(i.resultUri)).toBe(false); // moved
     expect(fs.__files.has(i.thumbUri)).toBe(false);
-    expect(fs.__files.has(i.maskUri)).toBe(false);
+    expect(fs.__files.has(i.maskUri!)).toBe(false);
     expect(fs.__files.has(i.originalUri)).toBe(true); // original is copied, source kept
     expect(lib.listItems().map((r) => r.id)).toEqual([row.id]);
     expect(lib.parseSettings(row.settingsJson)).toMatchObject({ engine: 'x', workingCap: 2048 });

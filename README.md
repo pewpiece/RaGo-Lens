@@ -3,7 +3,7 @@
 A personal Android app (Expo React Native, TypeScript) that removes the background from a photo of an object **entirely on the phone**
 and exports a transparent PNG. No accounts, no backend, no analytics, no network calls.
 
-**Phase 1 ships Cutout mode.** Scan (notebook photo to formatted text) is a disabled placeholder for Phase 2.
+**Two modes:** **Cutout** (remove a background, export a transparent PNG) and **Scan** (photo of a notebook page to editable, formatted text). Both run fully offline.
 
 > **Status: built and tested in a sandbox without an Android device.** Unit/integration tests, lint and typecheck pass, `expo prebuild` and the Metro
 > bundle succeed, and the model was checked on a desktop. The APK itself has not been built or run yet. Read
@@ -62,9 +62,14 @@ The app depends only on the `ImageEngine` interface (`app/src/engine/types.ts`).
 4. Run `scripts/verify-model` on a few photos and the device checklist.
 A user-importable model file (from storage) is not built yet but the engine takes its path from a function (`modelPath`), so it is a small change.
 
-## Phase 2 (Scan)
-`app/src/modes/registry.ts` lists modes (id, title, accent token, route, engine). Scan is registered but disabled; capture, library, export/share, theme and
-settings are mode-agnostic and library rows carry a `mode` column.
+## Scan mode
+Photo of a notebook page (camera or gallery or shared in) -> Google ML Kit text recognition on the phone -> structure -> editable Markdown with
+headings, bullet and numbered lists, nesting and paragraphs. Copy (Markdown), Copy plain, Share, and results are saved in the Library (a `scan` item with the photo, a `.md`
+file and a thumbnail). English/Latin and Devanagari can be chosen in Settings or with Retry. Printed text and neat handwriting work best; messy handwriting will be unreliable.
+Code: `app/src/scan/` (engine wrapper, formatter, pipeline) and `app/src/app/scan.tsx`.
+
+## Modes registry
+`app/src/modes/registry.ts` lists modes (id, title, accent token, route, engine). Capture, library, export/share, theme and settings are mode-agnostic and library rows carry a `mode` column.
 
 ## Licences
 App code: yours to license. Model: U²-Net-P, Apache 2.0 (text shipped in the app). Dependencies are permissively licensed; see each package.

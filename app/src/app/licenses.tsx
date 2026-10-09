@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { Body, Header, Muted, Screen, SectionTitle } from '@/components/ui';
 import { APACHE_2_TEXT } from '@/about/apache2';
-import { MODEL_INFO, OTHER_LICENCES } from '@/about/licenses';
+import { MODEL_INFO, OTHER_LICENCES, SCAN_INFO } from '@/about/licenses';
 import { fonts, fontSizes, spacing } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -19,6 +19,9 @@ export default function Licenses() {
       >
         {APACHE_2_TEXT}
       </Text>
+      <SectionTitle>Scan text recognition</SectionTitle>
+      <Body>{SCAN_INFO.name}</Body>
+      <Muted>{SCAN_INFO.licence}</Muted>
       <SectionTitle>Open-source libraries</SectionTitle>
       <Muted>{OTHER_LICENCES}</Muted>
       <View style={{ height: spacing.xxl }} />

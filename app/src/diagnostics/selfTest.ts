@@ -6,11 +6,26 @@ import { imageFromBytes, readAlpha } from '@/engine/skiaOps';
 import { DEFAULT_EXPORT_OPTIONS } from '@/export/options';
 import { pngHasAlphaChannel } from '@/export/png';
 import { renderExport } from '@/scene/exportRender';
+import { deviceScanDeps, getOcrEngine } from '@/scan/factory';
+import { runScan } from '@/scan/pipeline';
 
 // Stored as .bin on purpose: for image types Expo returns only a drawable resource NAME on Android (not a file path),
 // which image decoders cannot open. Non-image assets are copied to a real file, which we then copy to a .jpg path.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const SAMPLE = require('../../assets/samples/sample.bin') as number;
+// Printed page with a heading, a bullet list, a numbered list and a sentence.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const SCAN_SAMPLE = require('../../assets/samples/scan-sample.bin') as number;
+
+async function sampleToJpg(module: number, name: string): Promise<string> {
+  const asset = Asset.fromModule(module);
+  await asset.downloadAsync();
+  if (!asset.localUri) throw new Error(`${name} has no local file`);
+  const jpg = new File(Paths.cache, name);
+  if (jpg.exists) jpg.delete();
+  new File(asset.localUri).copySync(jpg);
+  return jpg.uri;
+}
 
 export interface SelfTestResult {
   passed: boolean;
@@ -74,7 +89,25 @@ export async function runSelfTest(onLine?: (line: string) => void): Promise<Self
       `opaque ${((opaque / sampled) * 100).toFixed(1)}%  transparent ${((clear / sampled) * 100).toFixed(1)}%`,
     );
 
-    const passed = result.foundObject && hasAlphaChannel && opaque > 0 && clear > 0;
+    const cutoutOk = result.foundObject && hasAlphaChannel && opaque > 0 && clear > 0;
+    log(`cut-out check: ${cutoutOk ? 'ok' : 'FAILED'}`);
+
+    // Scan: real ML Kit text recognition on the bundled printed page.
+    const scanUri = await sampleToJpg(SCAN_SAMPLE, 'selftest-scan.jpg');
+    const tScan = Date.now();
+    const scan = await runScan(
+      { uri: scanUri, script: 'latin', engine: getOcrEngine(false) },
+      deviceScanDeps,
+    );
+    log(`scan done in ${((Date.now() - tScan) / 1000).toFixed(1)}s, ${scan.charCount} characters`);
+    log(`scan text: ${scan.plain.replace(/\n+/g, ' / ').slice(0, 160)}`);
+    const low = scan.plain.toLowerCase();
+    const scanOk = ['shopping', 'milk', 'eggs', 'bread', 'wash', 'mother'].every((w) =>
+      low.includes(w),
+    );
+    log(`scan check: ${scanOk ? 'ok' : 'FAILED (expected words missing)'}`);
+
+    const passed = cutoutOk && scanOk;
     log(passed ? `PASS ${lap()}` : `FAIL ${lap()}`);
     return { passed, lines };
   } catch (e) {

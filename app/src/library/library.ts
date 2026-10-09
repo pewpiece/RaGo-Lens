@@ -51,11 +51,17 @@ export interface NewItem {
   resultUri: string;
   /** Small PNG preview (temp file); moved into storage. */
   thumbUri: string;
-  /** Mask layer PNG (temp file); moved into storage so the item can be refined again later. */
-  maskUri: string;
+  /** Mask layer PNG (temp file) for cut-outs; moved into storage so the item can be refined again later. */
+  maskUri?: string;
   width: number;
   height: number;
   settings: Record<string, unknown>;
+}
+
+/** File extension of a URI (lower case, no dot), or a fallback. */
+function extOf(uri: string, fallback: string): string {
+  const m = /\.([a-z0-9]{1,5})(?:[?#].*)?$/i.exec(uri);
+  return m ? m[1]!.toLowerCase() : fallback;
 }
 
 function moveInto(dir: Directory, srcUri: string, name: string, copy = false): string {
@@ -86,10 +92,12 @@ export function saveItem(item: NewItem): ResultRow {
   };
   try {
     row.originalUri = moveInto(dir, item.originalUri, `${id}-original.jpg`, true);
-    row.resultUri = moveInto(dir, item.resultUri, `${id}-result.png`);
-    row.thumbUri = moveInto(dir, item.thumbUri, `${id}-thumb.png`);
-    const maskUri = moveInto(dir, item.maskUri, `${id}-mask.png`);
-    row.settingsJson = JSON.stringify({ ...item.settings, maskUri }); // set early so cleanup can find it
+    row.resultUri = moveInto(dir, item.resultUri, `${id}-result.${extOf(item.resultUri, 'png')}`);
+    row.thumbUri = moveInto(dir, item.thumbUri, `${id}-thumb.${extOf(item.thumbUri, 'png')}`);
+    if (item.maskUri) {
+      const maskUri = moveInto(dir, item.maskUri, `${id}-mask.png`);
+      row.settingsJson = JSON.stringify({ ...item.settings, maskUri }); // set early so cleanup can find it
+    }
     repo.insertResult(db(), row);
   } catch (e) {
     removeFiles(row);
@@ -173,4 +181,17 @@ export function clearLibrary(): void {
   } catch {
     /* leave it */
   }
+}
+
+/** Overwrite the stored text of a scan item (the result file is a text/markdown file). */
+export function writeItemText(id: string, text: string): boolean {
+  const row = repo.getResult(db(), id);
+  if (!row) return false;
+  const f = new File(row.resultUri);
+  f.write(text);
+  return true;
+}
+
+export async function readItemText(row: Pick<ResultRow, 'resultUri'>): Promise<string> {
+  return new File(row.resultUri).text();
 }

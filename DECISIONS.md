@@ -81,6 +81,18 @@ to confirm that path exists but could not run it on a device.
 `VersionNumber`, which Gradle 9 removed, so the Android build failed to configure; (2) it resolved the ONNX Runtime Android library as
 `latest.integration` (1.31 today), which would not match the 1.24.3 JS API, so it is pinned to 1.24.3. Remove the patch if a newer package fixes both.
 
+## Scan mode (text recognition)
+- **Engine: Google ML Kit Text Recognition v2** through `@react-native-ml-kit/text-recognition@2.0.0` (MIT wrapper). The *bundled* models are used (`com.google.mlkit:text-recognition*`), so it
+  works offline and needs no Google Play services and no network. ML Kit itself is **not open source**: it is free under Google's ML Kit terms, which is fine for a personal app but is a
+  different licence class from the rest of the stack (noted in-app under Settings > Licences). The wrapper ships Latin, Chinese, Devanagari, Japanese and Korean models, which makes the APK
+  noticeably larger; only Latin and Devanagari are exposed in the UI. Alternatives considered: Tesseract (open source, but clearly weaker on photos), PaddleOCR on ONNX Runtime
+  (open, and the runtime already works here, but needs a detector, recogniser and a lot of post-processing code I cannot validate on a phone), cloud OCR (violates the no-network rule).
+- **Formatting is geometry based** (`scan/format.ts`, unit tested): paragraph breaks from vertical gaps, headings from larger or all-caps standalone lines, list markers (`- • * o 1. a)`) and nesting from left offset,
+  soft-wrapped sentences re-joined only when a line runs to the right margin and the next starts lower-case (hyphenated breaks repaired). Notebook pages are mostly one thought per line, so it keeps line breaks otherwise.
+- Photos are capped at 3072 px on the long edge for Scan (text needs more pixels than a cut-out).
+- Scan results are `scan` rows in the same library table; `result_uri` is the markdown file, `thumb_uri` a JPEG thumbnail, `original_uri` the page photo. Edits in the editor are saved to the file after 700 ms.
+- Same lazy-load safety as the ONNX runtime: a missing native module becomes a readable error, not a crash. A built-in diagnostics sample page checks real recognition on the device (Settings > Run diagnostics).
+
 ## Share intent
 **`expo-share-intent@8.0.1`**: the only maintained option I found that (a) has an Expo config plugin that works with
 `expo prebuild`, (b) supports SDK 57, (c) registers the Android `SEND image/*` intent filter and (d) exposes a React hook.

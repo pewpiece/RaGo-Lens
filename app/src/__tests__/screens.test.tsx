@@ -41,20 +41,20 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-  it('shows Cutout as active and Scan as coming soon', async () => {
+  it('shows both modes as active', async () => {
     await render(wrap(<Home />));
     expect(screen.getByText('Cutout')).toBeTruthy();
-    expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('mode-scan').props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByText('Scan')).toBeTruthy();
+    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.getByTestId('mode-scan').props.accessibilityState.disabled).toBe(false);
   });
 
-  it('opens the capture screen from the Cutout card, but not from Scan', async () => {
+  it('opens capture in the right mode from each card', async () => {
     await render(wrap(<Home />));
     await fireEvent.press(screen.getByTestId('mode-cutout'));
-    expect(mockPush).toHaveBeenCalledWith('/capture');
-    mockPush.mockClear();
+    expect(mockPush).toHaveBeenLastCalledWith('/capture');
     await fireEvent.press(screen.getByTestId('mode-scan'));
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenLastCalledWith('/capture?mode=scan');
   });
 
   it('shows an empty state with no recent results', async () => {
@@ -64,10 +64,14 @@ describe('Home', () => {
   });
 
   it('shows recent results and a link to the library', async () => {
-    mockItems = [{ id: 'a', thumbUri: 'file:///t.png', createdAt: 1_700_000_000_000 }];
+    mockItems = [
+      { id: 'a', mode: 'cutout', thumbUri: 'file:///t.png', createdAt: 1_700_000_000_000 },
+      { id: 'b', mode: 'scan', thumbUri: 'file:///s.jpg', createdAt: 1_700_000_100_000 },
+    ];
     await render(wrap(<Home />));
     expect(screen.getByText('See all')).toBeTruthy();
-    expect(screen.getByLabelText(/Open result from/)).toBeTruthy();
+    expect(screen.getAllByLabelText(/Open result from/)).toHaveLength(2);
+    expect(screen.getAllByText('Aa')).toHaveLength(1); // only the scan item carries the text badge
   });
 
   it('opens settings', async () => {
@@ -100,9 +104,16 @@ describe('Settings', () => {
     expect(useSettingsStore.getState().workingSizeCap).toBe(1536);
   });
 
+  it('chooses the Scan writing system', async () => {
+    await render(wrap(<Settings />));
+    expect(useSettingsStore.getState().scanScript).toBe('latin');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Devanagari' }));
+    expect(useSettingsStore.getState().scanScript).toBe('devanagari');
+  });
+
   it('toggles the developer mock engine', async () => {
     await render(wrap(<Settings />));
-    await fireEvent.press(screen.getByRole('switch', { name: 'Developer: use mock engine' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Developer: use mock engines' }));
     expect(useSettingsStore.getState().useMockEngine).toBe(true);
   });
 

@@ -7,12 +7,17 @@ describe('modes registry', () => {
     expect(c.route).toBe('/capture');
     expect(c.engine).toBe('segmentation');
   });
-  it('keeps Scan as a disabled placeholder with no route or engine', () => {
+  it('has Scan enabled with its own route, OCR engine and teal accent', () => {
     const s = getMode('scan')!;
-    expect(s).toMatchObject({ enabled: false, route: null, engine: null, accent: 'accentScan' });
+    expect(s).toMatchObject({
+      enabled: true,
+      route: '/capture?mode=scan',
+      engine: 'ocr',
+      accent: 'accentScan',
+    });
   });
-  it('only Cutout is enabled and ids are unique', () => {
-    expect(enabledModes().map((m) => m.id)).toEqual(['cutout']);
+  it('both modes are enabled and ids are unique', () => {
+    expect(enabledModes().map((m) => m.id)).toEqual(['cutout', 'scan']);
     expect(new Set(MODES.map((m) => m.id)).size).toBe(MODES.length);
   });
   it('returns undefined for unknown modes', () => {

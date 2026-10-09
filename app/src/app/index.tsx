@@ -104,6 +104,13 @@ export default function Home() {
                 style={StyleSheet.absoluteFill}
                 resizeMode="contain"
               />
+              {item.mode === 'scan' ? (
+                <View style={[s.badge, { backgroundColor: tokens.accentScan }]}>
+                  <Text style={{ color: tokens.onAccentScan, fontSize: 11, fontWeight: '800' }}>
+                    Aa
+                  </Text>
+                </View>
+              ) : null}
             </Pressable>
           )}
         />
@@ -147,6 +154,14 @@ const styles = (t: ThemeTokens) =>
       fontSize: fontSizes.body,
       fontWeight: '700',
       marginBottom: spacing.sm,
+    },
+    badge: {
+      position: 'absolute',
+      right: 4,
+      top: 4,
+      borderRadius: radii.sm,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
     },
     thumb: {
       width: 96,

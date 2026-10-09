@@ -43,9 +43,15 @@ Written honestly: **I could not build or run this app on an Android device or em
 - **Theme**: System mode follows `Appearance`; I did not check the status bar and navigation bar colours on-device. The splash screen background is
   fixed brand dark (`#0E1116`) in both themes.
 
+## Scan mode
+- Verified in CI on an emulator only (real ML Kit on a printed sample page); **not tried on a real notebook photo or on handwriting**. Messy cursive and mixed languages will often come out wrong. Always re-read the result.
+- Devanagari recognition is exposed but untested on real Devanagari pages. Mixed Latin + Devanagari pages need a Retry with the other setting.
+- The formatter guesses structure from line positions. Skewed or curved pages, photos taken at an angle, and notebooks with ruled lines running through the text can produce wrong headings, merged lines or wrong nesting. The text is editable for that reason.
+- ML Kit is proprietary (free under Google's terms) and bundles five script models, so the APK is larger than the cut-out alone needed.
+- No export to a file yet: Copy, Copy plain and Share (text) only.
+
 ## Product limits (by design or time)
 - Android only (min SDK 26). iOS is not configured (share extension disabled).
-- Scan mode is a disabled placeholder. Phase 2 is not started.
 - Library has no search/sort/pagination (loads all rows). Single-item delete is via multi-select (long press).
 - Input photos are re-encoded to JPEG for processing, so a PNG with transparency is flattened before cut-out. Very large photos (50 MP+) depend on how
   `expo-image-manipulator` decodes them; not tested.

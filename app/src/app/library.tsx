@@ -134,6 +134,13 @@ export default function Library() {
                     {df.format(item.createdAt)}
                   </Text>
                 </View>
+                {item.mode === 'scan' ? (
+                  <View style={[styles.modeBadge, { backgroundColor: t.accentScan }]}>
+                    <Text style={{ color: t.onAccentScan, fontSize: 11, fontWeight: '800' }}>
+                      Aa
+                    </Text>
+                  </View>
+                ) : null}
                 {isSel ? (
                   <View style={[styles.check, { backgroundColor: t.accent }]}>
                     <Text style={{ color: t.onAccent, fontWeight: '800' }}>✓</Text>
@@ -155,6 +162,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     overflow: 'hidden',
     maxWidth: '33%',
+  },
+  modeBadge: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    borderRadius: radii.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
   },
   date: {
     position: 'absolute',

@@ -18,6 +18,7 @@ import { useSettingsStore, useThemeStore } from '@/store/instances';
 import { WORKING_SIZE_CHOICES } from '@/store/settingsStore';
 import { MODEL_INFO } from '@/about/licenses';
 import type { ExportBackground, ExportSize } from '@/export/options';
+import type { ScanScript } from '@/scan/types';
 import type { ThemeMode } from '@/theme/tokens';
 import { useState } from 'react';
 import { spacing } from '@/theme/tokens';
@@ -29,6 +30,8 @@ export default function Settings() {
   const setExp = useSettingsStore((s) => s.setExportDefaults);
   const cap = useSettingsStore((s) => s.workingSizeCap);
   const setCap = useSettingsStore((s) => s.setWorkingSizeCap);
+  const scanScript = useSettingsStore((s) => s.scanScript);
+  const setScanScript = useSettingsStore((s) => s.setScanScript);
   const mock = useSettingsStore((s) => s.useMockEngine);
   const setMock = useSettingsStore((s) => s.setUseMockEngine);
   const [notice, setNotice] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
@@ -105,6 +108,22 @@ export default function Settings() {
         />
       </Row>
 
+      <SectionTitle>Scan</SectionTitle>
+      <Row
+        label="Writing system"
+        hint="Which kind of writing Scan should read. You can also change it with Retry on a scan."
+      >
+        <Segmented<ScanScript>
+          label="Scan writing system"
+          value={scanScript}
+          onChange={(v) => void setScanScript(v)}
+          options={[
+            { value: 'latin', label: 'English / Latin' },
+            { value: 'devanagari', label: 'Devanagari' },
+          ]}
+        />
+      </Row>
+
       <SectionTitle>Processing</SectionTitle>
       <Row
         label="Working size cap"
@@ -118,8 +137,8 @@ export default function Settings() {
         />
       </Row>
       <Toggle
-        label="Developer: use mock engine"
-        hint="Skips the real model and cuts out a centre ellipse. For testing the UI."
+        label="Developer: use mock engines"
+        hint="Skips the real models: cut-out becomes a centre ellipse and Scan returns sample text. For testing the UI."
         value={mock}
         onChange={(v) => void setMock(v)}
       />
