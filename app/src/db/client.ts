@@ -17,5 +17,3 @@ export function getDb() {
   if (!cached) cached = create();
   return cached;
 }
-
-export type AppDb = ReturnType<typeof getDb>;

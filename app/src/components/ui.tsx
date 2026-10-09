@@ -154,7 +154,7 @@ export function Button({
   const { tokens: t } = useTheme();
   const palette: Record<ButtonKind, { bg: string; fg: string; border: string }> = {
     primary: { bg: t.accent, fg: t.onAccent, border: t.accent },
-    secondary: { bg: t.surfaceRaised, fg: t.text, border: t.border },
+    secondary: { bg: t.surfaceRaised, fg: t.text, border: t.borderStrong },
     danger: { bg: 'transparent', fg: t.danger, border: t.danger },
     ghost: { bg: 'transparent', fg: t.text, border: 'transparent' },
   };
@@ -252,7 +252,7 @@ export function Segmented<T extends string | number>({
         borderRadius: radii.md,
         padding: 3,
         borderWidth: 1,
-        borderColor: t.border,
+        borderColor: t.borderStrong,
       }}
     >
       {options.map((o) => {
@@ -359,7 +359,7 @@ export function Toggle({
           borderRadius: 15,
           backgroundColor: value ? t.accent : t.surfaceRaised,
           borderWidth: 1,
-          borderColor: value ? t.accent : t.border,
+          borderColor: value ? t.accent : t.borderStrong,
           justifyContent: 'center',
           paddingHorizontal: 3,
           alignItems: value ? 'flex-end' : 'flex-start',

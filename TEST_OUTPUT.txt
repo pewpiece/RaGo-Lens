@@ -1,0 +1,305 @@
+RaGo Lens — real command output captured 2026-10-09T09:48Z in the Linux build sandbox (no Android device, no Android SDK).
+Node v22.22.0, npm 10.9.4
+
+================ scripts/fetch-model.sh (second run is a no-op if already verified) ================
+Model already present and verified: /home/user/RaGo-Lens/scripts/../app/assets/models/u2netp.onnx
+
+================ sha256sum of the model ================
+309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8  app/assets/models/u2netp.onnx
+4574861 app/assets/models/u2netp.onnx
+
+================ npm run lint ================
+
+> rago-lens@0.1.0 lint
+> eslint . --max-warnings 0
+
+
+================ npm run typecheck ================
+
+> rago-lens@0.1.0 typecheck
+> tsc --noEmit
+
+
+================ npm test -- --verbose ================
+PASS src/__tests__/screens.test.tsx
+  Home
+    ✓ shows Cutout as active and Scan as coming soon (375 ms)
+    ✓ opens the capture screen from the Cutout card, but not from Scan (20 ms)
+    ✓ shows an empty state with no recent results (10 ms)
+    ✓ shows recent results and a link to the library (124 ms)
+    ✓ opens settings (10 ms)
+  Settings
+    ✓ switches theme live via the segmented control (55 ms)
+    ✓ changes export defaults and working size (48 ms)
+    ✓ toggles the developer mock engine (27 ms)
+    ✓ asks for confirmation before clearing the library (59 ms)
+    ✓ shows the model licence in About (15 ms)
+PASS src/__tests__/exportRender.test.tsx
+  export rendering (real Skia scene)
+    ✓ transparent export: PNG has an alpha channel, transparent corners, opaque centre (109 ms)
+    ✓ white background export is fully opaque (45 ms)
+    ✓ solid colour background (36 ms)
+    ✓ shadow export keeps transparency and adds soft alpha around the object (37 ms)
+    ✓ auto-crop shrinks the output to the object plus padding and respects the size cap (78 ms)
+    ✓ auto-crop positions the object correctly (object touches the crop edges, centre opaque) (23 ms)
+    ✓ scales down correctly: a 50% export is the same picture at half size (55 ms)
+    ✓ brush strokes: erase removes the object, restore brings back background (26 ms)
+    ✓ soft brush edge produces partial alpha (29 ms)
+    ✓ bakeMask applies strokes into a new layer and returns the same layer when there are none (13 ms)
+    ✓ finds the object bounds from the mask (with strokes applied) (25 ms)
+    ✓ renders a transparent thumbnail (11 ms)
+PASS src/__tests__/flows.test.tsx
+  Processing
+    ✓ runs the pipeline, saves to the library and opens the result (419 ms)
+    ✓ shows a clear error and retries on request (60 ms)
+    ✓ never crashes on an unexpected (non-CutoutError) failure (8 ms)
+    ✓ keeps the result when the library save fails, and tells the user (5 ms)
+    ✓ cancel aborts the run and goes back without opening a result (6 ms)
+    ✓ uses the retry working-size override (9 ms)
+    ✓ goes home when there is nothing to process (8 ms)
+  Capture permissions
+    ✓ offers to allow the camera and to pick from the gallery (8 ms)
+    ✓ when permanently denied, points to phone settings and keeps the gallery path (9 ms)
+    ✓ shows the camera controls when granted (7 ms)
+  Library
+    ✓ shows an empty state (16 ms)
+    ✓ multi-select then delete asks for confirmation and deletes the chosen items (123 ms)
+    ✓ cancel clears the selection without deleting (26 ms)
+    ✓ reports a failed delete instead of crashing (21 ms)
+  Result
+    ✓ goes home when there is no result (3 ms)
+    ✓ offers Refine, Retry and Export, and warns when nothing was found (111 ms)
+    ✓ shows the original while pressing and hiding it on release (before/after) (20 ms)
+    ✓ retry with a different working size restarts processing (32 ms)
+    ✓ surfaces a library-save notice (12 ms)
+  Export error handling
+    ✓ explains a denied gallery permission and keeps Share available (79 ms)
+    ✓ confirms a successful save (37 ms)
+    ✓ turns an out-of-memory render into a friendly message (35 ms)
+    ✓ switching to a coloured background shows colour choices (32 ms)
+PASS src/__tests__/skiaOps.test.ts
+  Skia pixel ops (real Skia via CanvasKit)
+    ✓ resizes and samples RGBA at model-input size (4 ms)
+    ✓ a known mask applied to a solid image gives exactly the known alpha (2 ms)
+    ✓ matches the CPU reference (applyMaskToRgba) for partial alpha (2 ms)
+    ✓ upscales a small mask smoothly (soft edges) to the full image size (2 ms)
+    ✓ wraps Alpha_8 coverage and round-trips through readAlpha
+    ✓ encodes a PNG that decodes back with its alpha channel intact (1 ms)
+PASS src/__tests__/slider.test.tsx
+  valueFromX
+    ✓ maps a touch position to a stepped value within range (2 ms)
+  Slider accessibility
+    ✓ increments and decrements through accessibility actions, clamped (26 ms)
+PASS src/__tests__/library.test.ts
+  storage guard
+    ✓ passes when there is room plus headroom (2 ms)
+    ✓ throws a friendly LowStorageError when space is short (10 ms)
+    ✓ estimates PNG size proportionally to pixels
+PASS src/__tests__/project.test.ts
+  app configuration
+    ✓ has the agreed identity (16 ms)
+    ✓ wires the branding files from assets/branding and they exist (2 ms)
+    ✓ does not block the camera permission and accepts shared images (1 ms)
+    ✓ declares the on-device runtime and storage plugins (1 ms)
+    ✓ blocks INTERNET only when RAGO_BLOCK_INTERNET=1 (2 ms)
+  no network access at runtime
+    ✓ finds the app sources
+    ✓ app code contains no fetch( (1 ms)
+    ✓ app code contains no XMLHttpRequest (1 ms)
+    ✓ app code contains no WebSocket (1 ms)
+    ✓ app code contains no axios (1 ms)
+    ✓ app code contains no http(s):// URLs (1 ms)
+  release pipeline files
+    ✓ release workflow builds on v* tags, fetches the model and signs from the four documented secrets (2 ms)
+    ✓ CI runs lint, typecheck and tests
+    ✓ no keystores or secrets are committed (321 ms)
+    ✓ the model script, env file and About text agree on the model (1 ms)
+PASS src/__tests__/engine.onnx.test.ts
+  OnnxSegmentationEngine
+    ✓ feeds a [1,3,320,320] float tensor under the model input name and post-processes the first output (264 ms)
+    ✓ creates the session once and reuses it (502 ms)
+    ✓ reports a missing model clearly and retries on the next call (305 ms)
+    ✓ maps a session load failure to model-load-failed (1 ms)
+    ✓ maps out-of-memory failures during the run (24 ms)
+    ✓ rejects an output of the wrong size (25 ms)
+    ✓ honours cancellation between stages and discards the result (25 ms)
+PASS src/__tests__/stores.test.ts
+  theme store
+    ✓ defaults to system before hydration (1 ms)
+    ✓ hydrates a persisted choice (3 ms)
+    ✓ ignores garbage in storage
+    ✓ applies changes live, persists them and informs the OS appearance (2 ms)
+    ✓ survives a failing storage backend
+  settings store
+    ✓ has sane defaults (1 ms)
+    ✓ persists and re-hydrates every setting (1 ms)
+    ✓ clamps the working size
+  parseExportOptions
+    ✓ falls back to defaults for invalid JSON and bad fields
+PASS src/__tests__/engine.pure.test.ts
+  rgbaToNchw
+    ✓ lays out planes as CHW and normalises with max-division, mean and std (14 ms)
+    ✓ divides by the image max, so a dim image is stretched (1 ms)
+    ✓ does not produce NaN for an all-black image
+    ✓ rejects undersized buffers (15 ms)
+    ✓ exposes the model input size (1 ms)
+  postprocessMask
+    ✓ min-max normalises, so any value range maps to the full 0..255
+    ✓ keeps soft edges between the thresholds (not a hard binary mask) (1 ms)
+    ✓ treats a flat output as "nothing found"
+    ✓ blur smooths a hard step (1 ms)
+    ✓ rejects too-small output (3 ms)
+    ✓ smoothstep clamps
+    ✓ boxBlur preserves a constant field
+  applyMaskToRgba (known mask -> known alpha)
+    ✓ writes mask*alpha into the alpha channel and leaves colour alone (1 ms)
+    ✓ throws on a size mismatch
+  resizeMaskBilinear
+    ✓ upscales a 2x2 mask smoothly and keeps corners (1 ms)
+    ✓ is the identity at the same size
+  maskBounds / scaleAndPadBounds
+    ✓ finds the tight box (right/bottom exclusive) (1 ms)
+    ✓ returns null for an empty mask
+    ✓ ignores faint noise below the threshold
+    ✓ scales, pads and clamps
+  MockEngine
+    ✓ returns a centred ellipse with the same aspect ratio (2 ms)
+    ✓ reports progress (51 ms)
+    ✓ can be cancelled before and during work (27 ms)
+    ✓ isCancelled recognises cancellation errors
+    ✓ surfaces injected failures (1 ms)
+    ✓ ellipseMask is symmetric
+  toCutoutError
+    ✓ classifies memory, decode and unknown failures (1 ms)
+PASS src/__tests__/exportGeometry.test.ts
+  computeExportGeometry
+    ✓ exports the full image when auto-crop is off (1 ms)
+    ✓ crops to the object plus padding (percent of the longer side)
+    ✓ lets padding extend beyond the photo edge when the object touches it (1 ms)
+    ✓ caps the long edge to 2048/1024 but never upscales
+    ✓ falls back to the full image when no object was found (1 ms)
+    ✓ adds room for a shadow
+  PNG alpha detection
+    ✓ detects RGBA and grey+alpha colour types (2 ms)
+    ✓ rejects RGB / grey / palette without tRNS (17 ms)
+    ✓ accepts palette PNGs that carry a tRNS chunk (1 ms)
+    ✓ rejects non-PNG data (e.g. a JPEG) and truncated files
+PASS src/__tests__/db.test.ts
+  migrations
+    ✓ creates the schema and sets user_version (49 ms)
+    ✓ is idempotent and applies only pending migrations (8 ms)
+    ✓ rolls back a failing migration and leaves the version untouched (10 ms)
+    ✓ refuses a database from a newer app version (3 ms)
+  results repo
+    ✓ inserts, lists newest-first, reads, updates and deletes (25 ms)
+  key/value storage
+    ✓ sqlite kv upserts and removes (20 ms)
+    ✓ memory kv behaves the same (1 ms)
+PASS src/__tests__/strokes.test.ts
+  brush history (undo/redo)
+    ✓ starts empty with nothing to undo or redo (2 ms)
+    ✓ undoes and redoes in order (1 ms)
+    ✓ a new stroke clears the redo stack (1 ms)
+    ✓ does not mutate previous states
+  stroke helpers
+    ✓ soft edge blur scales with brush size and softness, clamped (1 ms)
+    ✓ skips points that are too close (1 ms)
+  view transform
+    ✓ fits and centres an image in a box (1 ms)
+    ✓ screen/image mapping round-trips
+    ✓ pinch zoom keeps the point under the fingers fixed (1 ms)
+    ✓ two-finger drag pans (1 ms)
+    ✓ clamps zoom to the allowed range
+    ✓ ignores a degenerate (zero-distance) previous pinch (1 ms)
+    ✓ clampPan keeps part of the image on screen
+PASS src/__tests__/imagePrep.test.ts
+  capScale / cappedSize
+    ✓ never upscales (1 ms)
+    ✓ fits a 12 MP photo to the cap, keeping aspect ratio
+  prepareWorkingImage
+    ✓ resizes by width for big landscape photos (2 ms)
+    ✓ resizes by height for big portrait photos (1 ms)
+    ✓ only normalises orientation for small photos
+    ✓ falls back to normalise-then-shrink when the size is unknown (1 ms)
+PASS src/__tests__/modes.test.ts
+  modes registry
+    ✓ has Cutout enabled with a route and engine (1 ms)
+    ✓ keeps Scan as a disabled placeholder with no route or engine
+    ✓ only Cutout is enabled and ids are unique (1 ms)
+    ✓ returns undefined for unknown modes
+PASS src/__tests__/pipeline.test.ts
+  runCutout (real Skia + MockEngine)
+    ✓ produces a full-resolution mask layer and a cutout with transparent corners and opaque centre (148 ms)
+    ✓ respects the working-size cap (18 ms)
+    ✓ is cancellable mid-flight (41 ms)
+    ✓ maps engine and decode failures to friendly CutoutErrors (74 ms)
+    ✓ flags when nothing was found (53 ms)
+PASS src/__tests__/tokens.test.ts
+  dark tokens
+    ✓ defines every token as a colour string (3 ms)
+    ✓ meets WCAG AA (4.5:1) for body text on every surface (2 ms)
+    ✓ meets AA for text on accent fills and accent/danger text on the background (1 ms)
+    ✓ meets the 3:1 non-text UI minimum for borders on the background
+    ✓ keeps the two checkerboard greys distinguishable but subtle
+  light tokens
+    ✓ defines every token as a colour string (2 ms)
+    ✓ meets WCAG AA (4.5:1) for body text on every surface (1 ms)
+    ✓ meets AA for text on accent fills and accent/danger text on the background (1 ms)
+    ✓ meets the 3:1 non-text UI minimum for borders on the background
+    ✓ keeps the two checkerboard greys distinguishable but subtle (1 ms)
+  scheme resolution
+    ✓ honours explicit light/dark regardless of the system
+    ✓ follows the system in system mode, defaulting to dark when unknown
+    ✓ maps schemes to token sets (1 ms)
+Test Suites: 17 passed, 17 total
+Tests:       172 passed, 172 total
+Snapshots:   0 total
+Time:        4.066 s
+Ran all test suites.
+
+================ expo prebuild --platform android (config plugins incl. share-intent, ONNX Runtime) ================
+[expo-share-intent] IOS module disabled
+- Creating native directory (./android)
+✔ Created native directory
+- Updating package.json
+✔ Updated package.json | no changes
+- Running prebuild
+[expo-share-intent] add android filters (image/*) and multi-filters ()
+- Running prebuild
+✔ Finished prebuild
+--- manifest permissions / intent filters ---
+2:  <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" tools:node="remove"/>
+3:  <uses-permission android:name="android.permission.CAMERA"/>
+4:  <uses-permission android:name="android.permission.INTERNET"/>
+5:  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+6:  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
+7:  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+8:  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+9:  <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
+10:  <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove"/>
+11:  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+12:  <uses-permission android:name="android.permission.VIBRATE"/>
+13:  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+26:    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths" an
+39:        <data android:mimeType="image/*"/>
+92:        applicationId 'dev.rago.lens'
+156:    // onnxruntime-react-native @generated begin onnxruntime-react-native - expo prebuild (DO NOT MODIFY) sync-ec94e2a0d49f04b1bbc51ec3f57c45710b04aad8
+157:    implementation project(':onnxruntime-react-native')
+158:    // onnxruntime-react-native @generated end onnxruntime-react-native
+
+================ expo export --platform android (Metro + Hermes bundle; proves all imports resolve and the model asset is bundled) ================
+assets/models/u2netp.onnx (4.6MB)
+node_modules/expo-router/assets/error.png (469B)
+› android bundles (1):
+_expo/static/js/android/entry-4408f93c004642ceaac1307ed3a11b1c.hbc (4.9MB)
+Exported: /tmp/claude-0/scratch/export2
+
+================ scripts/verify-model: real model + the app's TypeScript pre/post-processing (desktop WASM runtime, NOT the phone) ================
+--- car.jpg ---
+input=input.1 outputs=7 firstOutputDims=[1,1,320,320] (desktop WASM: 1321 ms)
+foreground fraction=18.0% bounds={"left":21,"top":141,"right":255,"bottom":258}
+wrote /tmp/claude-0/scratch/car-cutout.png (480x360, RGBA)
+--- animal.jpg ---
+input=input.1 outputs=7 firstOutputDims=[1,1,320,320] (desktop WASM: 1408 ms)
+foreground fraction=24.2% bounds={"left":21,"top":82,"right":294,"bottom":277}
+wrote /tmp/claude-0/scratch/animal-cutout.png (1000x667, RGBA)

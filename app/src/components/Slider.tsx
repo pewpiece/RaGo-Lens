@@ -103,7 +103,7 @@ export function Slider({
         {...pan.panHandlers}
         style={{ height: 40, justifyContent: 'center' }}
       >
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }} />
+        <View style={{ height: 4, borderRadius: 2, backgroundColor: t.borderStrong }} />
         <View
           style={{
             position: 'absolute',

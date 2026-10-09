@@ -43,10 +43,6 @@ export function listItems(limit?: number): ResultRow[] {
   return repo.listResults(db(), limit);
 }
 
-export function getItem(id: string): ResultRow | undefined {
-  return repo.getResult(db(), id);
-}
-
 export interface NewItem {
   mode: ModeId;
   /** Source image (any readable URI); copied into private storage. */

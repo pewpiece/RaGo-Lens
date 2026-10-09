@@ -6,7 +6,10 @@ export interface ThemeTokens {
   background: string;
   surface: string;
   surfaceRaised: string;
+  /** Hairline for cards and dividers (decorative). */
   border: string;
+  /** Outline for interactive controls; meets the 3:1 non-text contrast minimum. */
+  borderStrong: string;
   text: string;
   textMuted: string;
   /** Cutout mode accent (orange). */
@@ -28,6 +31,7 @@ export const darkTokens: ThemeTokens = {
   surface: '#171C23',
   surfaceRaised: '#202732',
   border: '#343D4A',
+  borderStrong: '#6B7686',
   text: '#F4F6F8',
   textMuted: '#A6AFBC',
   accent: '#FF8A3D',
@@ -46,6 +50,7 @@ export const lightTokens: ThemeTokens = {
   surface: '#FFFFFF',
   surfaceRaised: '#F1ECE3',
   border: '#CFC6B8',
+  borderStrong: '#85806F',
   text: '#1C1A17',
   textMuted: '#5B564C',
   accent: '#B84A06',

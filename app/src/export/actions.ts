@@ -2,8 +2,8 @@ import { ImageFormat, type SkImage } from '@shopify/react-native-skia';
 import * as Clipboard from 'expo-clipboard';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
-import { readFileHead, tempName, writeCacheFile } from '@/lib/files';
-import { assertStorage, estimatePngBytes } from '@/library/library';
+import { readFileHead, writeCacheFile } from '@/lib/files';
+import { assertStorage } from '@/library/library';
 import { Paths } from 'expo-file-system';
 import { pngHasAlphaChannel, isPng } from './png';
 import type { RenderedExport } from '@/scene/exportRender';
@@ -76,5 +76,3 @@ export async function copyImage(image: SkImage): Promise<void> {
     throw new ExportError('failed', `Could not copy the image: ${(e as Error).message}`);
   }
 }
-
-export { estimatePngBytes, tempName };

@@ -1,4 +1,5 @@
 import { Alert, View } from 'react-native';
+import { router } from 'expo-router';
 import Constants from 'expo-constants';
 import {
   Banner,
@@ -134,6 +135,8 @@ export default function Settings() {
       <Muted>{MODEL_INFO.name}</Muted>
       <Muted>{MODEL_INFO.licence}</Muted>
       <Muted>{MODEL_INFO.attribution}</Muted>
+      <View style={{ height: spacing.md }} />
+      <Button label="View licences" onPress={() => router.push('/licenses')} />
       <View style={{ height: spacing.xxl }} />
     </Screen>
   );

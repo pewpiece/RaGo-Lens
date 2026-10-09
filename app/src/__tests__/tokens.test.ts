@@ -47,8 +47,14 @@ describe.each(sets)('%s tokens', (_name, t) => {
     expect(contrastRatio(t.danger, t.surface)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('meets the 3:1 non-text UI minimum for borders on the background', () => {
-    expect(contrastRatio(t.border, t.background)).toBeGreaterThanOrEqual(1.5); // decorative hairline
+  it('meets the 3:1 non-text UI minimum for control outlines on every surface', () => {
+    for (const bg of [t.background, t.surface, t.surfaceRaised]) {
+      expect(contrastRatio(t.borderStrong, bg)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('keeps card hairlines visible but decorative', () => {
+    expect(contrastRatio(t.border, t.background)).toBeGreaterThanOrEqual(1.5);
   });
 
   it('keeps the two checkerboard greys distinguishable but subtle', () => {

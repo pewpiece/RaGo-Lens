@@ -19,15 +19,5 @@ export function readFileHead(uri: string, length: number): Uint8Array {
   }
 }
 
-export function removeFile(uri: string | null | undefined): void {
-  if (!uri) return;
-  try {
-    const f = new File(uri);
-    if (f.exists) f.delete();
-  } catch {
-    /* already gone */
-  }
-}
-
 export const tempName = (prefix: string, ext: string) =>
   `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}.${ext}`;

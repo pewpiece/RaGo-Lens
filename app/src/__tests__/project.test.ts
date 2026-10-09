@@ -90,7 +90,8 @@ describe('no network access at runtime', () => {
     (f) =>
       /\.(ts|tsx)$/.test(f) &&
       !f.includes(`${path.sep}__tests__${path.sep}`) &&
-      !f.includes(`${path.sep}testing${path.sep}`),
+      !f.includes(`${path.sep}testing${path.sep}`) &&
+      !f.endsWith(`about${path.sep}apache2.ts`), // static licence text: contains URLs but makes no requests
   );
   it('finds the app sources', () => expect(sources.length).toBeGreaterThan(30));
   it.each([
