@@ -6,6 +6,8 @@ name: Build check (no secrets)
 on:
   push:
     tags: ['check-*']
+    # TEMPORARY: build a phone APK on every push to the working branch. Remove once things are stable.
+    branches: ['claude/new-session-3h6f6u']
   workflow_dispatch:
 
 jobs:
