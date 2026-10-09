@@ -1,4 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import Home from '@/app/index';
+import Settings from '@/app/settings';
+import { ThemeProvider } from '@/theme/ThemeProvider';
+import { useSettingsStore, useThemeStore } from '@/store/instances';
+import { clearLibrary } from '@/library/library';
+import { Alert } from 'react-native';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -25,13 +31,6 @@ jest.mock('@/library/useLibrary', () => ({
 }));
 jest.mock('@/library/openAction', () => ({ openLibraryItem: jest.fn() }));
 jest.mock('@/library/library', () => ({ clearLibrary: jest.fn() }));
-
-import Home from '@/app/index';
-import Settings from '@/app/settings';
-import { ThemeProvider } from '@/theme/ThemeProvider';
-import { useSettingsStore, useThemeStore } from '@/store/instances';
-import { clearLibrary } from '@/library/library';
-import { Alert } from 'react-native';
 
 const wrap = (ui: React.ReactElement) => <ThemeProvider>{ui}</ThemeProvider>;
 

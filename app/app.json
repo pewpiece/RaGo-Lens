@@ -16,7 +16,7 @@
         "backgroundColor": "#0E1116"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -49,9 +49,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "RaGo Lens lets you pick a photo to cut out.",
-          "cameraPermission": false,
-          "microphonePermission": false
+          "photosPermission": "RaGo Lens lets you pick a photo to cut out."
         }
       ],
       [
@@ -74,7 +72,10 @@
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": ["image/*"]
+          "androidIntentFilters": [
+            "image/*"
+          ],
+          "disableIOS": true
         }
       ],
       "onnxruntime-react-native"

@@ -57,7 +57,7 @@ export function throwIfAborted(signal?: AbortSignal): void {
 export function toCutoutError(e: unknown): CutoutError {
   if (e instanceof CutoutError) return e;
   const msg = e instanceof Error ? e.message : String(e);
-  if (/out of memory|oom|allocation|bad_alloc|OutOfMemory/i.test(msg)) {
+  if (/out of memory|\boom\b|bad_alloc|OutOfMemory|failed to allocate|allocation failed/i.test(msg)) {
     return new CutoutError(
       'out-of-memory',
       'The phone ran out of memory. Try a smaller working size in Settings.',
