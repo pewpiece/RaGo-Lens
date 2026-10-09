@@ -76,6 +76,11 @@ to confirm that path exists but could not run it on a device.
 - `expo-file-system`'s `copy()`/`move()` are async; the library uses `copySync()`/`moveSync()`. A fake filesystem that keeps the sync/async split
   (`src/testing/fakeFileSystem.ts`) backs `libraryFiles.test.ts`; mutating the code back to the async calls makes that test run crash.
 
+## Patched dependency (found by the first CI build)
+`app/patches/onnxruntime-react-native+1.24.3.patch` (applied by `patch-package` on `npm install`/`npm ci`): (1) the package's Gradle script used
+`VersionNumber`, which Gradle 9 removed, so the Android build failed to configure; (2) it resolved the ONNX Runtime Android library as
+`latest.integration` (1.31 today), which would not match the 1.24.3 JS API, so it is pinned to 1.24.3. Remove the patch if a newer package fixes both.
+
 ## Share intent
 **`expo-share-intent@8.0.1`**: the only maintained option I found that (a) has an Expo config plugin that works with
 `expo prebuild`, (b) supports SDK 57, (c) registers the Android `SEND image/*` intent filter and (d) exposes a React hook.
