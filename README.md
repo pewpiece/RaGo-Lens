@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="app/assets/branding/icon.png" alt="RaGo Lens logo" width="160">
+</p>
+
 # RaGo Lens
 
 A personal Android app (Expo React Native, TypeScript) that removes the background from a photo of an object **entirely on the phone**
