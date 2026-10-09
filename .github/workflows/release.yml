@@ -81,10 +81,26 @@ jobs:
           KS="$RUNNER_TEMP/release.keystore"
           echo "$KEYSTORE_BASE64" | base64 --decode > "$KS"
           OUT="rago-lens-${TAG}.apk"
+          # keytool stores aliases in lower case, and a typo in the KEY_ALIAS secret is easy to make, so look inside the
+          # keystore: use KEY_ALIAS if it is a private-key entry, otherwise the first private-key entry found.
+          LIST="$(keytool -list -keystore "$KS" -storepass "$KEYSTORE_PASSWORD" 2>&1)" || { echo "$LIST"; echo "::error::Could not open the keystore: KEYSTORE_PASSWORD or KEYSTORE_BASE64 is wrong"; exit 1; }
+          echo "Keystore entries:"; echo "$LIST" | grep -E "Entry|entry" || true
+          ALIAS="$KEY_ALIAS"
+          if ! echo "$LIST" | grep -iE "^${KEY_ALIAS}," | grep -q PrivateKeyEntry; then
+            ALIAS="$(echo "$LIST" | awk -F, '/PrivateKeyEntry/{print $1; exit}')"
+            if [ -z "$ALIAS" ]; then echo "::error::The keystore contains no private key (PrivateKeyEntry). Create it with keytool -genkeypair (see docs/RELEASING.md)"; exit 1; fi
+            echo "::warning::KEY_ALIAS secret did not match a key in the keystore; using '$ALIAS' instead. Update the secret to silence this."
+          fi
           "$BT/zipalign" -p -f 4 "$IN" "$RUNNER_TEMP/aligned.apk"
-          "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" \
+          if ! "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$ALIAS" \
             --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
-            --out "$OUT" "$RUNNER_TEMP/aligned.apk"
+            --out "$OUT" "$RUNNER_TEMP/aligned.apk"; then
+            # PKCS12 keystores (the keytool default) use the store password for the key as well
+            echo "::warning::KEY_PASSWORD did not unlock the key; retrying with KEYSTORE_PASSWORD (PKCS12 keystores use the same password)."
+            "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$ALIAS" \
+              --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+              --out "$OUT" "$RUNNER_TEMP/aligned.apk"
+          fi
           "$BT/apksigner" verify --print-certs "$OUT"
           rm -f "$KS"
           echo "APK_PATH=app/$OUT" >> "$GITHUB_ENV"
