@@ -7,6 +7,7 @@ import { BatchRunner, DEFAULT_BATCH_OPTIONS, createBatch } from '@/batch/queue';
 import { listBatchItems } from '@/db/batchRepo';
 import type { SyncDb } from '@/db/kv';
 import { ThemeProvider } from '@/theme/ThemeProvider';
+import { unlabelledInteractives } from '@/testing/a11y';
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -149,6 +150,11 @@ const seed = (id: string, n: number) =>
   });
 
 describe('New batch screen', () => {
+  it('has no unnamed buttons', async () => {
+    await render(wrap(<NewBatch />));
+    expect(unlabelledInteractives()).toEqual([]);
+  });
+
   it('picks photos, previews the first file name and creates the batch', async () => {
     await render(wrap(<NewBatch />));
     await fireEvent.press(screen.getByTestId('pick-photos'));

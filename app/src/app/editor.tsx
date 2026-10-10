@@ -64,6 +64,15 @@ const SWATCHES = [
   '#30A46C',
 ];
 
+/** What the user sees when an editing step fails: memory problems get advice, anything else a plain sentence (no stack text). */
+export function friendlyEditorError(e: unknown): string {
+  const m = e instanceof Error ? e.message : '';
+  if (/memory/i.test(m)) {
+    return 'Not enough memory for that step on this photo. Close other apps, undo the last edit, or lower the working size in Settings and try again.';
+  }
+  return 'That step could not be completed. Your photo and earlier edits are safe; please try again.';
+}
+
 const oneFingerMode = (tool: Tool, straight: boolean): OneFingerMode => {
   if (tool === 'lasso') return 'stroke';
   if (tool === 'rect' || tool === 'ellipse') return 'shape';
@@ -129,7 +138,7 @@ export default function Editor() {
         putOpenDoc(key, d);
         if (alive) setDoc(d);
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : 'Could not open the editor.');
+        if (alive) setError(friendlyEditorError(e));
       }
     }, 30);
     return () => {
@@ -228,7 +237,7 @@ export default function Editor() {
       try {
         fn();
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Something went wrong.');
+        setError(friendlyEditorError(e));
       } finally {
         setBusy(null);
       }
@@ -465,7 +474,11 @@ export default function Editor() {
       }
       router.back();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your edits.');
+      setError(
+        e instanceof Error && /memory|space|storage/i.test(e.message)
+          ? e.message
+          : 'Your edits could not be saved. They are still open here; try Done again.',
+      );
     } finally {
       setSaving(false);
     }

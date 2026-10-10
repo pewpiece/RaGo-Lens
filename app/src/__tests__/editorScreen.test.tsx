@@ -13,6 +13,7 @@ import { maskToImage } from '@/mask/maskImage';
 import { TiledMask } from '@/mask/tiledMask';
 import { useSession } from '@/store/session';
 import { ThemeProvider } from '@/theme/ThemeProvider';
+import { unlabelledInteractives } from '@/testing/a11y';
 import { objectWithBlob } from '../../test/fixtures';
 
 const mockBack = jest.fn();
@@ -116,6 +117,10 @@ const doc = () => getOpenDoc(sessionKey('row1', 'file:///photo.jpg'))!;
 const surface = () => screen.getByTestId('editor-touch');
 
 describe('Editor screen', () => {
+  it('every button, tab and switch on screen has a name a screen reader can speak', async () => {
+    expect(unlabelledInteractives()).toEqual([]);
+  });
+
   it('tap the logo with the tap-select tool, Remove it, then Undo', async () => {
     // photo (492, 200) is the logo; on screen that is (246, 100)
     await fireEvent(surface(), 'responderGrant', touch(246, 100));
@@ -194,5 +199,23 @@ describe('Editor screen', () => {
     await fireEvent.press(screen.getByLabelText('Removed in red'));
     const { useSettingsStore } = require('@/store/instances');
     await waitFor(() => expect(useSettingsStore.getState().editorViewMode).toBe('removed-red'));
+  });
+
+  it('a failing step shows a plain explanation, keeps the document, and memory problems get advice', async () => {
+    const d = doc();
+    const spy = jest.spyOn(d, 'applySelection').mockImplementationOnce(() => {
+      throw new Error('Out of memory: could not allocate an editing surface');
+    });
+    d.selectShape({ kind: 'rect', x: 10, y: 10, w: 50, h: 50 }, 'replace');
+    await waitFor(() => expect(screen.getByTestId('sel-remove')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('sel-remove'));
+    expect(await screen.findByText(/Not enough memory for that step/)).toBeTruthy();
+    expect(d.hasSelection).toBe(true); // nothing was lost
+    spy.mockImplementationOnce(() => {
+      throw new TypeError("Cannot read properties of undefined (reading 'x')");
+    });
+    await fireEvent.press(screen.getByTestId('sel-remove'));
+    expect(await screen.findByText(/That step could not be completed/)).toBeTruthy();
+    expect(screen.queryByText(/Cannot read properties/)).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import { maskToImage } from '@/mask/maskImage';
 import { TiledMask } from '@/mask/tiledMask';
 import { useSession } from '@/store/session';
 import { ThemeProvider } from '@/theme/ThemeProvider';
+import { unlabelledInteractives } from '@/testing/a11y';
 import { objectWithBlob } from '../../test/fixtures';
 import initSqlJs from 'sql.js';
 
@@ -42,6 +43,10 @@ jest.mock('@/store/instances', () => {
   const { createThemeStore } = jest.requireActual('@/store/themeStore');
   const kv = memoryKv();
   return { useThemeStore: createThemeStore(kv), useSettingsStore: createSettingsStore(kv) };
+});
+jest.mock('@/compose/render', () => {
+  const actual = jest.requireActual('@/compose/render');
+  return { ...actual, renderComposite: jest.fn(actual.renderComposite) };
 });
 jest.mock('expo-haptics', () => ({
   notificationAsync: jest.fn(async () => {}),
@@ -165,6 +170,10 @@ beforeEach(async () => {
 });
 
 describe('Compose and export screen', () => {
+  it('every button, tab and switch on screen has a name a screen reader can speak', async () => {
+    expect(unlabelledInteractives()).toEqual([]);
+  });
+
   it("saves a transparent PNG at the product's own resolution, verified from the file that was written", async () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save to gallery' }));
     await waitFor(() => expect(mockSaved).toHaveLength(1), { timeout: 8000 });
@@ -245,5 +254,16 @@ describe('Compose and export screen', () => {
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
     void act;
+  });
+
+  it('an out-of-memory render becomes advice, and a retry works', async () => {
+    const { renderComposite } = jest.requireMock('@/compose/render');
+    renderComposite.mockRejectedValueOnce(new Error('Out of memory: could not render the export'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    expect(
+      await screen.findByText(/Not enough memory for that size/, undefined, { timeout: 8000 }),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save to gallery' }));
+    await waitFor(() => expect(mockSaved).toHaveLength(1), { timeout: 8000 });
   });
 });

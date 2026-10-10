@@ -9,7 +9,6 @@ import {
   Skia,
   StrokeCap,
   StrokeJoin,
-  TileMode,
   type SkCanvas,
   type SkImage,
   type SkPath,
@@ -18,6 +17,7 @@ import { alpha8Image, readAlpha } from '@/engine/skiaOps';
 import type { EditSession } from '@/mask/history';
 import { TILE, TiledMask, type Rect } from '@/mask/tiledMask';
 import { refineMatte } from './matting';
+import { gaussBlur, grayRank } from './morph';
 
 /**
  * Pixel edits on a TiledMask done by Skia, one tile at a time: the tile's current coverage is drawn into a small
@@ -376,8 +376,31 @@ export function upsampleSelection(
   const smallImg = alpha8Image(small, sw, sh);
   const white = Skia.Paint();
   white.setColor(Skia.Color('white'));
+  /** 0 = all clear, 255 = all selected, -1 = mixed, over the footprint of a region in the small selection. */
+  const uniformIn = (x0: number, y0: number, x1: number, y1: number): number => {
+    const sx0 = Math.max(0, Math.floor(x0 / kx) - 1);
+    const sx1 = Math.min(sw, Math.ceil(x1 / kx) + 1);
+    const sy0 = Math.max(0, Math.floor(y0 / ky) - 1);
+    const sy1 = Math.min(sh, Math.ceil(y1 / ky) + 1);
+    const first = small[sy0 * sw + sx0]! ? 255 : 0;
+    for (let y = sy0; y < sy1; y++)
+      for (let x = sx0; x < sx1; x++) if ((small[y * sw + x]! ? 255 : 0) !== first) return -1;
+    return first;
+  };
   for (const index of out.tilesIn(box)) {
     const tr = out.tileRect(index);
+    // far from any edge of the selection the answer is flat: no resampling, no matting
+    const flat = uniformIn(
+      tr.x - margin,
+      tr.y - margin,
+      tr.x + tr.w + margin,
+      tr.y + tr.h + margin,
+    );
+    if (flat === 0) continue;
+    if (flat === 255) {
+      out.setTile(index, new Uint8Array(tr.w * tr.h).fill(255));
+      continue;
+    }
     const reg: Rect = {
       x: Math.max(0, tr.x - margin),
       y: Math.max(0, tr.y - margin),
@@ -444,35 +467,18 @@ export function selectionBounds(sel: TiledMask): Rect | null {
   return Number.isFinite(l) ? { x: l, y: t, w: r - l + 1, h: b - t + 1 } : null;
 }
 
-/** Feather (blur) or grow/shrink (dilate/erode) a selection with Skia image filters, working on its bounding box only. */
+/** Feather (blur) or grow/shrink (grey-scale max/min filter) a selection, working on its bounding box only. */
 export function adjustSelection(sel: TiledMask, adj: SelectionAdjust): void {
   const bb = selectionBounds(sel);
   if (!bb || adj.radius <= 0) return;
   const pad = Math.ceil(adj.radius * 3) + 2;
-  const reg: Rect = {
-    x: Math.max(0, bb.x - pad),
-    y: Math.max(0, bb.y - pad),
-    w: 0,
-    h: 0,
-  };
+  const reg: Rect = { x: Math.max(0, bb.x - pad), y: Math.max(0, bb.y - pad), w: 0, h: 0 };
   reg.w = Math.min(sel.width, bb.x + bb.w + pad) - reg.x;
   reg.h = Math.min(sel.height, bb.y + bb.h + pad) - reg.y;
   const src = sel.readRegion(reg);
-  const img = alpha8Image(src, reg.w, reg.h);
-  const surface = Skia.Surface.Make(reg.w, reg.h);
-  if (!surface) throw new Error('Out of memory: could not allocate a selection surface');
-  const p = Skia.Paint();
-  p.setColor(Skia.Color('white'));
-  const r = adj.radius;
-  p.setImageFilter(
-    adj.kind === 'feather'
-      ? Skia.ImageFilter.MakeBlur(r / 2, r / 2, TileMode.Decal, null)
-      : adj.kind === 'grow'
-        ? Skia.ImageFilter.MakeDilate(r, r, null)
-        : Skia.ImageFilter.MakeErode(r, r, null),
-  );
-  surface.getCanvas().drawImage(img, 0, 0, p);
-  surface.flush?.();
-  const out = readAlpha(surface.makeImageSnapshot());
-  sel.writeRegion(reg, out);
+  if (adj.kind === 'grow' || adj.kind === 'shrink') {
+    sel.writeRegion(reg, grayRank(src, reg.w, reg.h, Math.round(adj.radius), adj.kind === 'grow'));
+    return;
+  }
+  sel.writeRegion(reg, gaussBlur(src, reg.w, reg.h, adj.radius / 2));
 }

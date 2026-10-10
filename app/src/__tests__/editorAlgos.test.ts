@@ -1,6 +1,6 @@
 import { labOf } from '@/editor/color';
 import { magicWand } from '@/editor/wand';
-import { components, dilate, erode } from '@/editor/morph';
+import { components, dilate, erode, gaussBlur, grayRank, rampAlpha } from '@/editor/morph';
 import { refineMatte } from '@/editor/matting';
 import { objectWithBlob } from '../../test/fixtures';
 
@@ -32,6 +32,61 @@ describe('morphology', () => {
     const opened = dilate(erode(s, w, h, 2), w, h, 2);
     expect(components(opened, w, h).count).toBe(2);
     expect(opened[10 * w + 8]).toBe(255);
+  });
+});
+
+describe('grey-scale min/max filter', () => {
+  it('matches a brute-force reference, grows and shrinks soft masks, and handles edges', () => {
+    const w = 23;
+    const h = 17;
+    const a = new Uint8Array(w * h);
+    for (let i = 0; i < a.length; i++) a[i] = (i * 37 + (i % 5) * 91) % 256;
+    for (const [r, max] of [
+      [1, true],
+      [2, false],
+      [3, true],
+      [4, false],
+    ] as [number, boolean][]) {
+      const got = grayRank(a, w, h, r, max);
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          let m = max ? 0 : 255;
+          for (let yy = Math.max(0, y - r); yy <= Math.min(h - 1, y + r); yy++)
+            for (let xx = Math.max(0, x - r); xx <= Math.min(w - 1, x + r); xx++)
+              m = max ? Math.max(m, a[yy * w + xx]!) : Math.min(m, a[yy * w + xx]!);
+          expect(got[y * w + x]).toBe(m);
+        }
+    }
+    expect(Array.from(grayRank(a, w, h, 0, true))).toEqual(Array.from(a));
+  });
+});
+
+describe('blur and ramp on tile regions', () => {
+  it('a Gaussian-like blur of a step edge is symmetric around 50 %, keeps flat areas flat and conserves mass', () => {
+    const w = 80;
+    const h = 20;
+    const step = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) step.fill(255, y * w + 40, y * w + w);
+    const out = gaussBlur(step, w, h, 3);
+    expect(out[10 * w + 39]! + out[10 * w + 40]!).toBeGreaterThan(250);
+    expect(out[10 * w + 39]! + out[10 * w + 40]!).toBeLessThan(260);
+    expect(out[10 * w + 5]).toBe(0);
+    expect(out[10 * w + 75]).toBe(255);
+    // edge width: 10 %..90 % spans about 2.5 sigma on each side
+    let lo = 0;
+    let hi = 0;
+    for (let x = 0; x < w; x++) {
+      if (out[10 * w + x]! <= 25) lo = x;
+      if (out[10 * w + x]! < 230) hi = x;
+    }
+    expect(hi - lo).toBeGreaterThan(4);
+    expect(hi - lo).toBeLessThan(14);
+    expect(gaussBlur(step, w, h, 0).every((v, i) => v === step[i])).toBe(true);
+  });
+  it('the ramp turns a soft edge into a clean one without moving the 50 % line', () => {
+    const src = Uint8Array.from([0, 40, 80, 128, 170, 220, 255]);
+    const out = rampAlpha(src, 0.35, 0.65);
+    expect(Array.from(out)).toEqual([0, 0, 0, 129, 255, 255, 255]);
   });
 });
 

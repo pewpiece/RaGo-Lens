@@ -1,7 +1,7 @@
-import { AlphaType, ColorType, Skia, TileMode, type SkImage } from '@shopify/react-native-skia';
-import { alpha8Image, readAlpha, tightenMask } from '@/engine/skiaOps';
+import { AlphaType, ColorType, Skia, type SkImage } from '@shopify/react-native-skia';
 import type { RefineState } from '@/edit/editState';
 import { TiledMask, type Rect } from '@/mask/tiledMask';
+import { gaussBlur, grayRank, rampAlpha } from './morph';
 import { refineMatte } from './matting';
 import { readRgbaRegion } from './tileOps';
 
@@ -9,7 +9,7 @@ import { readRgbaRegion } from './tileOps';
  * Edge quality at full resolution, tile by tile with an overlapping margin so there are no seams:
  *   matting (trimap + local colour line, resolved against the real photo pixels)  ->  shift  ->  smooth  ->  soften.
  * Tiles whose neighbourhood is entirely 0 or entirely 255 are skipped, so the work scales with the object's edge, not with
- * the image area. Shift / smooth / soften use Skia image filters; the matting loops only over band pixels.
+ * the image area. Matting, shift, smooth and soften are loops over one tile region at a time (never the whole image); the edge-only matting loops touch just the band.
  */
 export const DEFAULT_REFINE: RefineState = {
   softness: 0,
@@ -64,50 +64,15 @@ function hasEdge(a: Uint8Array): boolean {
   return false;
 }
 
-function pass(
-  img: SkImage,
-  w: number,
-  h: number,
-  setup: (p: ReturnType<typeof Skia.Paint>) => void,
-): SkImage {
-  const surface = Skia.Surface.Make(w, h);
-  if (!surface) throw new Error('Out of memory: could not allocate a refinement surface');
-  const p = Skia.Paint();
-  p.setColor(Skia.Color('white'));
-  setup(p);
-  surface.getCanvas().drawImage(img, 0, 0, p);
-  surface.flush?.();
-  return surface.makeImageSnapshot();
-}
-
-/** shift (dilate/erode) -> smooth (blur + re-threshold) -> soften (blur) on one alpha region, all in Skia. */
+/** shift (dilate/erode) -> smooth (blur + re-threshold) -> soften (blur) on one alpha region. */
 export function shapeAlpha(alpha: Uint8Array, w: number, h: number, s: RefineState): Uint8Array {
-  let img = alpha8Image(alpha, w, h);
-  if (s.shift !== 0) {
-    const r = Math.abs(s.shift);
-    img = pass(img, w, h, (p) =>
-      p.setImageFilter(
-        s.shift > 0
-          ? Skia.ImageFilter.MakeDilate(r, r, null)
-          : Skia.ImageFilter.MakeErode(r, r, null),
-      ),
-    );
-  }
-  if (s.smooth > 0 && !s.fineDetail) {
-    img = pass(img, w, h, (p) =>
-      p.setImageFilter(Skia.ImageFilter.MakeBlur(s.smooth / 2, s.smooth / 2, TileMode.Clamp, null)),
-    );
-    // blur rounds the contour; pulling the ramp back to 0.5 keeps the edge where it was but makes it clean
-    img = tightenMask(img, 0.35, 0.65);
-  }
-  if (s.softness > 0) {
-    img = pass(img, w, h, (p) =>
-      p.setImageFilter(
-        Skia.ImageFilter.MakeBlur(s.softness / 2, s.softness / 2, TileMode.Clamp, null),
-      ),
-    );
-  }
-  return readAlpha(img);
+  let a = alpha;
+  // shift: grey-scale dilate / erode. smooth: blur, then re-threshold. soften: blur. All on the tile region in JS: Skia's CPU
+  // morphology takes seconds per tile and a Skia blur ~140 ms (measured in CanvasKit, see DECISIONS.md); these take milliseconds.
+  if (s.shift !== 0) a = grayRank(a, w, h, Math.abs(Math.round(s.shift)), s.shift > 0);
+  if (s.smooth > 0 && !s.fineDetail) a = rampAlpha(gaussBlur(a, w, h, s.smooth / 2), 0.35, 0.65);
+  if (s.softness > 0) a = gaussBlur(a, w, h, s.softness / 2);
+  return a;
 }
 
 export interface RefineOptions {

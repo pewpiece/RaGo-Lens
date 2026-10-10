@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import Capture from '@/app/capture';
 import { useSession } from '@/store/session';
 import { ThemeProvider } from '@/theme/ThemeProvider';
+import { unlabelledInteractives } from '@/testing/a11y';
 
 const mockPush = jest.fn();
 let mockParams: Record<string, string> = {};
@@ -88,6 +89,10 @@ beforeEach(async () => {
 });
 
 describe('Capture guidance', () => {
+  it('every button, tab and switch on screen has a name a screen reader can speak', async () => {
+    expect(unlabelledInteractives()).toEqual([]);
+  });
+
   it('shows a grid and a level indicator that turns green when the phone is straight', async () => {
     expect(screen.getByTestId('capture-grid')).toBeTruthy();
     await emit(() => accelListeners[0]!({ x: Math.sin(0.2), y: Math.cos(0.2), z: 0 })); // ~11.5 degrees
