@@ -6,15 +6,22 @@ import { replaceItemImages } from '@/library/library';
 import { tempName, writeCacheFile } from '@/lib/files';
 import { renderExport, renderThumbnail, type SceneInputs } from '@/scene/exportRender';
 import type { ResultRow } from '@/db/schema';
+import { maskToImage } from '@/mask/maskImage';
 import type { EditorDoc } from './doc';
+import { decontaminationPatches } from './refine';
 
-export const sceneOfDoc = (doc: EditorDoc): SceneInputs => ({
-  original: doc.original,
-  maskLayer: doc.maskImage(),
-  strokes: [],
-  width: doc.width,
-  height: doc.height,
-});
+/** The scene as it will be exported: refined mask and (optionally) colour-decontaminated edges. */
+export function sceneOfDoc(doc: EditorDoc): SceneInputs {
+  const mask = doc.finalMask();
+  return {
+    original: doc.original,
+    maskLayer: maskToImage(mask),
+    patches: doc.refine.decontaminate ? decontaminationPatches(doc.original, mask) : undefined,
+    strokes: [],
+    width: doc.width,
+    height: doc.height,
+  };
+}
 
 /**
  * Writes the doc back to the library item: mask (8-bit grey+alpha PNG), full-resolution transparent PNG, thumbnail,
@@ -34,7 +41,7 @@ export async function saveDoc(doc: EditorDoc, itemId: string): Promise<ResultRow
   const row = replaceItemImages(itemId, {
     resultUri: writeCacheFile(tempName('result', 'png'), full.png),
     thumbUri: writeCacheFile(tempName('thumb', 'png'), thumb),
-    maskUri: writeCacheFile(tempName('mask', 'png'), encodePng(scene.maskLayer)),
+    maskUri: writeCacheFile(tempName('mask', 'png'), encodePng(doc.maskImage())),
     editStateJson: serializeEditState(edit),
     ...(photo
       ? {
@@ -46,6 +53,7 @@ export async function saveDoc(doc: EditorDoc, itemId: string): Promise<ResultRow
   });
   doc.edit = edit;
   doc.dirty = false;
+  doc.editDirty = false;
   doc.photoChanged = false;
   return row;
 }

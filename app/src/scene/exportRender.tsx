@@ -3,7 +3,7 @@ import { maskBoundsExact, type Bounds } from '@/engine/postprocess';
 import { encodePng, readAlpha } from '@/engine/skiaOps';
 import { pngHasAlphaChannel } from '@/export/png';
 import type { ExportOptions } from '@/export/options';
-import { CutoutTree, MaskTree } from './CutoutTree';
+import { CutoutTree, MaskTree, type PhotoPatchLike } from './CutoutTree';
 import { computeExportGeometry, type ExportGeometry } from './exportGeometry';
 import type { Stroke } from './strokes';
 
@@ -11,6 +11,8 @@ export interface SceneInputs {
   original: SkImage;
   maskLayer: SkImage;
   strokes: readonly Stroke[];
+  /** Colour-decontaminated edge tiles (see editor/refine.ts); optional. */
+  patches?: readonly PhotoPatchLike[];
   /** Working-image size in px. */
   width: number;
   height: number;

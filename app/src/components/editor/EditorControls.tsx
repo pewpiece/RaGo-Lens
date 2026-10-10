@@ -19,6 +19,7 @@ import { fontSizes, radii, spacing } from '@/theme/tokens';
 import { EditorScene, type SceneOverlay } from './EditorScene';
 import { loupeView } from '@/editor/loupe';
 import type { ViewMode } from '@/editor/viewModes';
+import type { RefineState } from '@/edit/editState';
 
 export type Tool =
   | 'wand'
@@ -30,6 +31,7 @@ export type Tool =
   | 'erase'
   | 'restore'
   | 'hand'
+  | 'edge'
   | 'orient';
 
 export const TOOLS: { id: Tool; label: string; group: 'select' | 'brush' | 'view' }[] = [
@@ -42,6 +44,7 @@ export const TOOLS: { id: Tool; label: string; group: 'select' | 'brush' | 'view
   { id: 'erase', label: 'Erase', group: 'brush' },
   { id: 'restore', label: 'Restore', group: 'brush' },
   { id: 'hand', label: 'Hand', group: 'view' },
+  { id: 'edge', label: 'Edge', group: 'view' },
   { id: 'orient', label: 'Rotate', group: 'view' },
 ];
 
@@ -161,6 +164,12 @@ export interface OptionsProps {
   polygonPoints: number;
   onClosePolygon: () => void;
   hasSelection: boolean;
+  refine: RefineState;
+  onRefineDraft: (r: RefineState) => void;
+  onRefineApply: () => void;
+  refineDirty: boolean;
+  previewRefined: boolean;
+  onPreviewRefined: (on: boolean) => void;
 }
 
 export function ToolOptions(p: OptionsProps) {
@@ -345,6 +354,69 @@ export function ToolOptions(p: OptionsProps) {
         <Text style={{ color: t.textMuted, fontSize: fontSizes.body }}>
           One finger moves the photo. Pinch to zoom, double-tap to switch between fit and 100%.
         </Text>
+      ) : null}
+      {p.tool === 'edge' ? (
+        <>
+          <Slider
+            label="Edge softness"
+            value={p.refine.softness}
+            min={0}
+            max={20}
+            step={1}
+            onChange={(v) => p.onRefineDraft({ ...p.refine, softness: v })}
+            format={(v) => `${Math.round(v)} px`}
+          />
+          <Slider
+            label="Shift edge (− shrink, + grow)"
+            value={p.refine.shift}
+            min={-20}
+            max={20}
+            step={1}
+            onChange={(v) => p.onRefineDraft({ ...p.refine, shift: v })}
+            format={(v) => `${v > 0 ? '+' : ''}${Math.round(v)} px`}
+          />
+          <Slider
+            label="Smooth contour"
+            value={p.refine.smooth}
+            min={0}
+            max={20}
+            step={1}
+            onChange={(v) => p.onRefineDraft({ ...p.refine, smooth: v })}
+            format={(v) => `${Math.round(v)} px`}
+          />
+          <Toggle
+            label="Fine detail"
+            hint="Hair, fur, fabric: keeps thin parts, no smoothing"
+            value={p.refine.fineDetail}
+            onChange={(v) => p.onRefineDraft({ ...p.refine, fineDetail: v })}
+          />
+          <Toggle
+            label="Clean edge colours"
+            hint="Removes the halo of the old background from edge pixels"
+            value={p.refine.decontaminate}
+            onChange={(v) => p.onRefineDraft({ ...p.refine, decontaminate: v })}
+          />
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Button
+              label={p.refineDirty ? 'Apply' : 'Applied'}
+              kind="primary"
+              disabled={!p.refineDirty}
+              onPress={p.onRefineApply}
+              style={{ flex: 1, paddingHorizontal: spacing.sm }}
+              testID="refine-apply"
+            />
+            <Button
+              label={p.previewRefined ? 'Preview: on' : 'Preview: off'}
+              onPress={() => p.onPreviewRefined(!p.previewRefined)}
+              style={{ flex: 1, paddingHorizontal: spacing.sm }}
+              testID="refine-preview"
+            />
+          </View>
+          <Text style={{ color: t.textMuted, fontSize: fontSizes.caption }}>
+            Settings are applied to the exported file. The preview shows them now; editing the
+            cut-out afterwards refreshes it.
+          </Text>
+        </>
       ) : null}
       {p.tool === 'orient' ? (
         <>

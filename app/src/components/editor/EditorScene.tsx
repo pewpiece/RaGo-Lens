@@ -51,6 +51,8 @@ export interface EditorSceneProps {
   /** Position (screen px) of the before/after divider. */
   compareX: number;
   overlay: SceneOverlay;
+  /** Draw the refined mask (see Edge tool) instead of the plain edited mask. */
+  previewRefined?: boolean;
   accent: string;
   danger: string;
 }
@@ -78,13 +80,17 @@ function MaskTiles({
   doc,
   which,
   tiles,
+  refined,
 }: {
   doc: EditorDoc;
   which: 'mask' | 'selection';
   tiles: number[];
+  /** Show the mask with the refinement settings applied (what the export will use). */
+  refined?: boolean;
 }) {
-  const m = which === 'mask' ? doc.mask : doc.selection;
-  const cache = which === 'mask' ? doc.maskTiles : doc.selectionTiles;
+  const r = which === 'mask' && refined ? doc.refinedPreview() : null;
+  const m = r ? r.mask : which === 'mask' ? doc.mask : doc.selection;
+  const cache = r ? r.tiles : which === 'mask' ? doc.maskTiles : doc.selectionTiles;
   return (
     <>
       {tiles.map((i) => {
@@ -176,7 +182,7 @@ function Cutout({ p, tiles, photo }: { p: EditorSceneProps; tiles: number[]; pho
         sampling={SAMPLING}
       />
       <Group layer={<Paint blendMode="dstIn" />}>
-        <MaskTiles doc={doc} which="mask" tiles={tiles} />
+        <MaskTiles doc={doc} which="mask" tiles={tiles} refined={p.previewRefined} />
         {overlay.liveStroke ? <LiveStroke s={overlay.liveStroke} /> : null}
       </Group>
     </Group>
@@ -230,7 +236,7 @@ export function EditorScene(p: EditorSceneProps) {
     body = (
       <Group transform={transform}>
         <Tint color="#FFFFFF" opacity={1}>
-          <MaskTiles doc={doc} which="mask" tiles={tiles} />
+          <MaskTiles doc={doc} which="mask" tiles={tiles} refined={p.previewRefined} />
           {overlay.liveStroke ? <LiveStroke s={overlay.liveStroke} /> : null}
         </Tint>
       </Group>
@@ -255,7 +261,7 @@ export function EditorScene(p: EditorSceneProps) {
             color={withAlpha('#FF1F3D', 0.6)}
           />
           <Group layer={<Paint blendMode="dstOut" />}>
-            <MaskTiles doc={doc} which="mask" tiles={tiles} />
+            <MaskTiles doc={doc} which="mask" tiles={tiles} refined={p.previewRefined} />
             {overlay.liveStroke ? <LiveStroke s={overlay.liveStroke} /> : null}
           </Group>
         </Group>

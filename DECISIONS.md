@@ -219,3 +219,12 @@ A black watch on a dark laptop gave a bad cut-out, an RGB export, a 328 px file 
   the last mode is remembered. Rendering was checked pixel by pixel offscreen (found and fixed two Skia pitfalls: a layer `opacity` also dims knock-outs inside it, and Alpha_8 images draw black unless used as a mask).
 - Zoom reaches 16x (1600 %); the photo is drawn from a mip chain (`editor/pyramid.ts`); a mini-map appears when zoomed in.
 - Not done in this pass: stylus hover (React Native gives no hover events without a native module).
+
+## M6: edge refinement at full resolution
+Segment small, resolve big: the model's mask (320 px for u2netp) is upscaled to the photo, then `editor/refine.ts` works tile by tile (512 px tiles with an overlapping margin, so no seams: tested
+equal to refining the whole mask at once within 2/255) -> matting (trimap + local colour line against the real photo pixels) -> shift (dilate/erode) -> smooth (blur + re-threshold) -> soften (blur).
+The uncertain band must cover how wrong the upscaled mask can be (about the upscale factor), so the pipeline passes `bandRadiusForUpscale(photo / mask size)`. Measured on a synthetic oversized, blurred mask: mean edge
+error 0.50 -> 0.04 with a sufficient band, and only 0.60 -> 0.39 with a band that is too narrow (that is why the band follows the upscale ratio).
+Colour decontamination for the final mask replaces edge colours with the estimated true foreground colour (`decontaminationPatches`: opaque tile patches drawn over the photo before the mask is applied; the photo
+file is never modified). Measured in the exported PNG on a red product on green: edge green excess 90 -> 2 (255 scale). Settings (softness / shift / smooth / fine detail / clean edge colours) are stored in
+`edit_state_json` and applied at export; the Edge tool previews them. Per-pixel JS loops run only over the edge band (matting, decontamination); shift / smooth / soften are Skia image filters. No speed claim is made for a phone.

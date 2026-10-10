@@ -2,8 +2,10 @@ import type { SkImage } from '@shopify/react-native-skia';
 import { maskBoundsExact } from './postprocess';
 import type { PreparedPhoto } from './imagePrep';
 import { DEFAULT_EDGE, edgeRamp, type EdgeLevel } from './edge';
-import { encodePng, maskLayerFromAlpha, tightenMask, toAlpha8 } from './skiaOps';
-import { throwIfAborted, toCutoutError, type ImageEngine } from './types';
+import { encodePng, maskLayerFromAlpha, tightenMask } from './skiaOps';
+import { DEFAULT_REFINE, bandRadiusForUpscale, refineMask } from '@/editor/refine';
+import { maskFromImage, maskToImage } from '@/mask/maskImage';
+import { CutoutError, throwIfAborted, toCutoutError, type ImageEngine } from './types';
 
 export interface PipelineDeps {
   /** Import the photo: an upright full-resolution original plus a capped working copy for the model. */
@@ -69,15 +71,29 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
     onProgress?.(0.82, 'Sharpening edges');
     const original = await deps.loadImage(prepared.uri);
     throwIfAborted(signal);
+    // upscale to the photo size and pull the edge in (the user's Edge setting) ...
     const { lo, hi } = edgeRamp(edge);
-    // upscale to the photo size, pull the edge in, then keep it as a compact 1-byte-per-pixel mask
-    const maskLayer = toAlpha8(
-      tightenMask(
-        maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height),
-        lo,
-        hi,
-      ),
+    const upscaled = tightenMask(
+      maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height),
+      lo,
+      hi,
     );
+    throwIfAborted(signal);
+    // ... then resolve the uncertain band against the real photo at full resolution (trimap + matting). The model's mask
+    // is only as sharp as its working size, so the band must cover the upscale factor.
+    const ratio = Math.max(prepared.width, prepared.height) / Math.max(mask.width, mask.height);
+    let maskLayer;
+    try {
+      const refined = refineMask(original, maskFromImage(upscaled), DEFAULT_REFINE, {
+        bandRadius: bandRadiusForUpscale(ratio),
+        signal,
+        onProgress: (f) => onProgress?.(0.82 + f * 0.12, 'Sharpening edges'),
+      });
+      maskLayer = maskToImage(refined);
+    } catch (e) {
+      if (signal?.aborted) throw new CutoutError('cancelled', 'Cancelled');
+      throw e;
+    }
     throwIfAborted(signal);
 
     onProgress?.(0.95, 'Saving');

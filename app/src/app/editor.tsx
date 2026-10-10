@@ -37,6 +37,7 @@ import { saveDoc } from '@/editor/persist';
 import { getOpenDoc, putOpenDoc, dropOpenDoc, sessionKey } from '@/editor/registry';
 import type { SelectMode, SelectionShape, BrushStroke } from '@/editor/tileOps';
 import { averageProductLuma, checkerFor, VIEW_MODES, type ViewMode } from '@/editor/viewModes';
+import type { RefineState } from '@/edit/editState';
 import { isZoomedIn, toggleFitActual, zoomLimits } from '@/editor/viewport';
 import { appendPoint } from '@/scene/strokes';
 import {
@@ -111,6 +112,8 @@ export default function Editor() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sugCount, setSugCount] = useState<number | null>(null);
+  const [refineDraft, setRefineDraft] = useState<RefineState | null>(null);
+  const [previewRefined, setPreviewRefined] = useState(false);
 
   // ----- load / create the editing document
   useEffect(() => {
@@ -439,7 +442,7 @@ export default function Editor() {
     setError(null);
     try {
       let maskUri = result?.maskUri ?? '';
-      if (doc.dirty || doc.photoChanged) {
+      if (doc.dirty || doc.photoChanged || doc.editDirty) {
         if (itemId) {
           const row = await saveDoc(doc, itemId);
           maskUri = (row && maskUriOf(row)) || maskUri;
@@ -469,7 +472,7 @@ export default function Editor() {
   };
 
   const cancel = () => {
-    if (!doc || (!doc.dirty && !doc.photoChanged)) {
+    if (!doc || (!doc.dirty && !doc.photoChanged && !doc.editDirty)) {
       if (doc) dropOpenDoc(key);
       return router.back();
     }
@@ -578,6 +581,7 @@ export default function Editor() {
             color={swatch}
             compareX={compareX}
             overlay={overlay}
+            previewRefined={previewRefined}
             accent={t.accent}
             danger={t.danger}
           />
@@ -726,6 +730,18 @@ export default function Editor() {
           polygonPoints={outline && tool === 'poly' ? outline.length : 0}
           onClosePolygon={() => (api.current.finishPolygon as () => void)()}
           hasSelection={doc.hasSelection}
+          refine={refineDraft ?? doc.refine}
+          onRefineDraft={setRefineDraft}
+          refineDirty={
+            refineDraft !== null && JSON.stringify(refineDraft) !== JSON.stringify(doc.refine)
+          }
+          onRefineApply={() => {
+            if (refineDraft) guard(() => doc.setRefine(refineDraft), 'Applying edge settings…');
+          }}
+          previewRefined={previewRefined}
+          onPreviewRefined={(on) =>
+            guard(() => setPreviewRefined(on), on ? 'Refining preview…' : undefined)
+          }
         />
       )}
       <ToolDock tool={tool} onTool={selectTool} />

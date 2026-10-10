@@ -1,6 +1,6 @@
 import type { SkImage } from '@shopify/react-native-skia';
 import { readAlpha, resizeImage, transformQuarter } from '@/engine/skiaOps';
-import { DEFAULT_EDIT_STATE, type EditState } from '@/edit/editState';
+import { DEFAULT_EDIT_STATE, type EditState, type RefineState } from '@/edit/editState';
 import { MaskHistory } from '@/mask/history';
 import { maskFromImage, maskToImage, TileImageCache } from '@/mask/maskImage';
 import { TiledMask } from '@/mask/tiledMask';
@@ -8,6 +8,7 @@ import { makeAnalysis, applySmartStroke, type Analysis } from './analysis';
 import { ImagePyramid } from './pyramid';
 import { suggestCleanups, type Suggestion } from './suggest';
 import { components } from './morph';
+import { DEFAULT_REFINE, isDefaultRefine, refineMask } from './refine';
 import { magicWand, type WandOptions } from './wand';
 import {
   adjustSelection,
@@ -49,7 +50,12 @@ export class EditorDoc {
   dirty = false;
   /** The photo itself was rotated/flipped since it was last saved (the stored original must be rewritten). */
   photoChanged = false;
+  /** Counts every change of the mask; keys caches that depend on it. */
+  maskRev = 0;
+  /** Edit-state fields (refine, background, ...) changed since the last save. */
+  editDirty = false;
   suggestions: Suggestion[] | null = null;
+  private refinedCache: { key: string; mask: TiledMask; tiles: TileImageCache } | null = null;
   private readonly dismissed = new Set<string>();
   private analysisCache: Analysis | null = null;
   private readonly listeners = new Set<() => void>();
@@ -90,6 +96,7 @@ export class EditorDoc {
     this.rev++;
     if (maskChanged) {
       this.dirty = true;
+      this.maskRev++;
       this.suggestions = null;
     }
     for (const l of this.listeners) l();
@@ -215,6 +222,40 @@ export class EditorDoc {
     this.selectClear();
   }
 
+  // ---------------------------------------------------------------- refinement
+
+  get refine(): RefineState {
+    return this.edit.refine ?? DEFAULT_REFINE;
+  }
+
+  /** Changes the refinement settings (non-destructive: the base mask is never rewritten by them). */
+  setRefine(r: RefineState): void {
+    this.edit = { ...this.edit, refine: r };
+    this.editDirty = true;
+    this.refinedCache = null;
+    this.bump();
+  }
+
+  /**
+   * The mask as it will be exported: the edited mask refined with the current settings. Cached per mask revision and
+   * settings. Blocks while it computes (the UI shows a busy label); with default settings it is the mask itself.
+   */
+  refinedPreview(): { mask: TiledMask; tiles: TileImageCache } {
+    const r = this.refine;
+    if (isDefaultRefine(r)) return { mask: this.mask, tiles: this.maskTiles };
+    const key = `${this.maskRev}:${JSON.stringify(r)}`;
+    if (this.refinedCache?.key !== key) {
+      const mask = refineMask(this.original, this.mask, r);
+      this.refinedCache = { key, mask, tiles: new TileImageCache(mask) };
+    }
+    return this.refinedCache;
+  }
+
+  /** The mask to export: refined if the settings ask for it. */
+  finalMask(): TiledMask {
+    return this.refinedPreview().mask;
+  }
+
   // ---------------------------------------------------------------- suggestions
 
   /** The mask resampled to the analysis size (what the clean-up analysis looks at). */
@@ -275,6 +316,7 @@ export class EditorDoc {
     this.pyramid = new ImagePyramid(original);
     this.analysisCache = null;
     this.history.clear();
+    this.refinedCache = null;
     this.photoChanged = true;
     this.bump(true);
   }

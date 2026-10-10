@@ -24,6 +24,8 @@ export interface MatteOptions {
   /** |F - B| (RGB units) below which the model's alpha is kept as is; above `trustDistance` the colour-line alpha is used fully. */
   lowContrast?: number;
   trustDistance?: number;
+  /** Keep `alpha` exactly as given and only recover edge colours (used at export, after the mask is final). */
+  keepAlpha?: boolean;
 }
 
 export interface MatteResult {
@@ -167,6 +169,20 @@ export function refineMatte(
     }
   }
   // blend the colour-line estimate with the model's alpha according to confidence, then denoise inside the band
+  if (o.keepAlpha) {
+    // the mask is final: only recover foreground colours for its semi-transparent edge pixels
+    for (let i = 0; i < n; i++) {
+      if (!band[i] || est[i]! < 0) continue;
+      const a = alpha[i]! / 255;
+      if (a <= 0.02 || a >= 0.995) continue;
+      const p = i * 4;
+      for (let k = 0; k < 3; k++) {
+        const c = a >= 0.12 ? (rgba[p + k]! - (1 - a) * bgCol[i * 3 + k]!) / a : fgCol[i * 3 + k]!;
+        colour[i * 3 + k] = Math.round(Math.min(255, Math.max(0, c)));
+      }
+    }
+    return { alpha: alpha.slice(), colour, band };
+  }
   const blended = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     if (band[i] && est[i]! >= 0)

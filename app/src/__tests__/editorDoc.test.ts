@@ -111,4 +111,29 @@ describe('EditorDoc: the Dell-logo and strap-hole workflows end to end', () => {
     expect(doc.photoChanged).toBe(true);
     expect(doc.history.canUndo).toBe(false);
   });
+
+  it('refinement settings are non-destructive: the base mask stays, the export mask is refined, defaults are free', () => {
+    const f = objectWithBlob(600, 400);
+    const doc = docOf(f, f.truth);
+    const base = doc.mask.toFlat();
+    expect(doc.finalMask()).toBe(doc.mask); // default settings: no work, same object
+    doc.setRefine({ ...doc.refine, shift: 4 });
+    expect(doc.editDirty).toBe(true);
+    const fin = doc.finalMask();
+    expect(fin).not.toBe(doc.mask);
+    expect(Array.from(doc.mask.toFlat())).toEqual(Array.from(base)); // base mask untouched
+    // the oval grew by about 4 px at its left edge (x = 0.4*600 - 0.26*600 = 84)
+    expect(fin.get(81, 200)).toBeGreaterThan(150);
+    expect(doc.mask.get(81, 200)).toBe(0);
+    // cached until the mask changes
+    expect(doc.finalMask()).toBe(fin);
+    doc.commitStroke({
+      mode: 'erase',
+      size: 20,
+      softness: 0,
+      opacity: 1,
+      points: [{ x: 240, y: 200 }],
+    });
+    expect(doc.finalMask()).not.toBe(fin);
+  });
 });
