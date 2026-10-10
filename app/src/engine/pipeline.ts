@@ -1,13 +1,13 @@
 import type { SkImage } from '@shopify/react-native-skia';
-import { maskBounds } from './postprocess';
-import type { PreparedImage } from './imagePrep';
+import { maskBoundsExact } from './postprocess';
+import type { PreparedPhoto } from './imagePrep';
 import { DEFAULT_EDGE, edgeRamp, type EdgeLevel } from './edge';
 import { encodePng, maskLayerFromAlpha, tightenMask } from './skiaOps';
 import { throwIfAborted, toCutoutError, type ImageEngine } from './types';
 
 export interface PipelineDeps {
-  /** Load the photo into an upright JPEG with its long edge capped. */
-  prepare: (uri: string, cap: number) => Promise<PreparedImage>;
+  /** Import the photo: an upright full-resolution original plus a capped working copy for the model. */
+  prepare: (uri: string, cap: number) => Promise<PreparedPhoto>;
   loadImage: (uri: string) => Promise<SkImage>;
   /** Persist mask PNG bytes (so it can be saved with the library item). Returns a file URI. */
   persistMask: (png: Uint8Array) => string;
@@ -16,12 +16,14 @@ export interface PipelineDeps {
 export interface CutoutResult {
   /** The photo as picked (before capping). */
   sourceUri: string;
-  /** Upright, size-capped working copy. All masks and exports are at this resolution. */
+  /** Upright FULL-RESOLUTION copy of the photo. The mask and every export are at this resolution. */
   workingUri: string;
   width: number;
   height: number;
+  /** Set when the photo was larger than the supported maximum and had to be scaled down on import. */
+  warning?: string;
   original: SkImage;
-  /** White RGBA layer at working size whose alpha channel is the mask. Non-destructive: the photo is never altered. */
+  /** Mask at photo resolution (alpha channel = mask). Non-destructive: the photo is never altered. */
   maskLayer: SkImage;
   maskUri: string;
   engineId: string;
@@ -50,11 +52,13 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
   try {
     throwIfAborted(signal);
     onProgress?.(0.02, 'Reading photo');
-    const prepared = await deps.prepare(uri, cap);
+    const photo = await deps.prepare(uri, cap);
+    const prepared = photo.original;
     throwIfAborted(signal);
 
+    // the model only ever sees the working copy; the mask is then brought up to the full photo size
     const mask = await engine.segment(
-      { uri: prepared.uri, width: prepared.width, height: prepared.height },
+      { uri: photo.working.uri, width: photo.working.width, height: photo.working.height },
       {
         signal,
         onProgress: (f, label) => onProgress?.(0.1 + f * 0.7, label),
@@ -85,7 +89,12 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
       maskLayer,
       maskUri,
       engineId: engine.id,
-      foundObject: maskBounds(mask.alpha, mask.width, mask.height, 32) !== null,
+      foundObject: maskBoundsExact(mask.alpha, mask.width, mask.height, 32) !== null,
+      ...(photo.scaledDownFrom
+        ? {
+            warning: `This photo (${photo.scaledDownFrom.width}×${photo.scaledDownFrom.height}) is larger than the supported maximum, so it was scaled down to ${prepared.width}×${prepared.height}.`,
+          }
+        : {}),
     };
   } catch (e) {
     throw toCutoutError(e);

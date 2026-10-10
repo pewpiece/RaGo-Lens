@@ -170,3 +170,38 @@ export function resizeMaskBilinear(
   }
   return out;
 }
+
+/** Alpha at or below this is treated as "not part of the object" when measuring bounds (invisible: under 1%). */
+export const BOUNDS_ALPHA_FLOOR = 2;
+
+/**
+ * Exact bounding box of pixels whose alpha is above `floor`, with early exit from each side, so an object
+ * near the image edge is found after scanning a few rows. Works on the full-resolution mask: a 1 px wide
+ * feature (a watch crown, an antenna) is never lost, unlike a down-scaled probe. Null when the mask is empty.
+ */
+export function maskBoundsExact(
+  alpha: Uint8Array,
+  width: number,
+  height: number,
+  floor = BOUNDS_ALPHA_FLOOR,
+): Bounds | null {
+  const rowHas = (y: number): boolean => {
+    const base = y * width;
+    for (let x = 0; x < width; x++) if (alpha[base + x]! > floor) return true;
+    return false;
+  };
+  let top = 0;
+  while (top < height && !rowHas(top)) top++;
+  if (top === height) return null;
+  let bottom = height - 1;
+  while (bottom > top && !rowHas(bottom)) bottom--;
+  const colHas = (x: number): boolean => {
+    for (let y = top; y <= bottom; y++) if (alpha[y * width + x]! > floor) return true;
+    return false;
+  };
+  let left = 0;
+  while (left < width - 1 && !colHas(left)) left++;
+  let right = width - 1;
+  while (right > left && !colHas(right)) right--;
+  return { left, top, right: right + 1, bottom: bottom + 1 };
+}

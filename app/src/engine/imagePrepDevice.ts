@@ -9,9 +9,12 @@ export const devicePrepDeps: PrepDeps = {
       Image.getSize(uri, (width, height) => resolve({ width, height }), reject),
     ),
   async manipulate(uri, resize) {
+    // A PNG/WebP source may carry transparency: keep it lossless instead of flattening it into a JPEG
+    // (that would turn the transparent parts black before the model even sees them).
+    const keepAlpha = /\.(png|webp)(?:[?#].*)?$/i.test(uri);
     const r = await ImageManipulator.manipulateAsync(uri, resize ? [{ resize }] : [], {
-      compress: 0.95,
-      format: ImageManipulator.SaveFormat.JPEG,
+      compress: keepAlpha ? 1 : 0.95,
+      format: keepAlpha ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG,
     });
     return { uri: r.uri, width: r.width, height: r.height };
   },

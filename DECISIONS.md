@@ -158,3 +158,26 @@ the model itself is verified with a desktop script (`scripts/verify-model`). See
 ## Cut-out edge tightening and lasso eraser
 - The model's mask is feathered, so dark objects photographed in dim light kept a light rim of background. After upscaling, the mask goes through an alpha ramp (Skia colour filter, no JS pixel loops). Settings has Soft / Normal / Tight (default Normal); Refine has a one-tap "Tighten edge" for an existing result.
 - Refine gained a Lasso tool: draw around an unwanted part (a logo or tag) and the enclosed area is erased, as a filled-path stroke so undo/redo and export work as before.
+
+# Phase 1.5 (pro cut-out editor)
+
+## M0: what the failing test photo taught us (and what changed)
+A black watch on a dark laptop gave a bad cut-out, an RGB export, a 328 px file and a clipped crown. Reproduced with synthetic fixtures
+(`app/test/fixtures/`) through the real export path (`src/__tests__/milestone0.test.tsx`):
+- **Clipped crown: reproduced and fixed.** `objectBoundsOf` measured bounds on a 256 px probe render; a 1 px feature vanished at that scale
+  so the auto-crop cut it off (bounds right edge 1120 instead of 1595 on the fixture). Bounds are now measured on the full-resolution mask with
+  an exact early-exit scan (`maskBoundsExact`, alpha floor 2 of 255), and a test proves every mask pixel survives the crop and that the 4 % padding is on all sides.
+- **Small output: reproduced in design and fixed.** Earlier decision "the working size cap is the image size" meant the photo (and the export)
+  was re-encoded at <= 2048 px before anything else. That decision is **reversed**: `preparePhoto` keeps an upright full-resolution original
+  (bounded to 24 MP, with a visible warning above that, never silently) and makes a separate working copy only for the model. The mask is
+  upscaled to the original size; `export size = original` means the photo's own size. A 1200x800 photo with a 300 px cap now exports at 1200x800;
+  a real 4000x3000 render exports at 4000x3000. Library thumbnails stay <= 320 px by design (they are previews); I could not tie the reported
+  328 px file to anything else in the code, a thumbnail is the only 320-ish px PNG the app writes.
+- **Not transparent / black fill: NOT reproduced.** In Node with real Skia the transparent export, the saved file and the thumbnail are RGBA PNGs with
+  alpha 0 outside the object and in holes, and nothing is filled with black. I cannot see what a phone's GPU path does. Defences added anyway:
+  (1) `assertPixelsTransparent` decodes the bytes about to be saved and refuses the export if there are no transparent pixels (a header saying RGBA
+  is not proof), if everything is transparent, or if the size is wrong; (2) PNG/WebP sources are no longer flattened into JPEG on import (that turned
+  transparent input pixels black before the model saw them). If the real phone still produces an RGB file, the new gate will refuse to save it and
+  say so, which will point at the exact stage.
+- Mask storage: an Alpha_8 image encodes to an 8-bit grey+alpha PNG and decodes with alpha intact (probed on CanvasKit), so masks can be stored compactly.
+  CanvasKit cannot `readPixels` into Alpha_8, so pixel reads go through RGBA in small tiles.

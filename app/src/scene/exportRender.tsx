@@ -1,5 +1,5 @@
 import { drawAsImage, Group, Paint, Rect, Shadow, type SkImage } from '@shopify/react-native-skia';
-import { maskBounds, type Bounds } from '@/engine/postprocess';
+import { maskBoundsExact, type Bounds } from '@/engine/postprocess';
 import { encodePng, readAlpha } from '@/engine/skiaOps';
 import { pngHasAlphaChannel } from '@/export/png';
 import type { ExportOptions } from '@/export/options';
@@ -16,30 +16,16 @@ export interface SceneInputs {
   height: number;
 }
 
-const MASK_PROBE_LONG_EDGE = 256;
-
-/** Tight bounds (working-image px) of the current mask, found on a small render, or null if empty. */
+/**
+ * Tight bounds (photo px) of the current mask, measured on the full-resolution mask (never a down-scaled
+ * probe, which loses thin features such as a watch crown), or null if the mask is empty.
+ */
 export async function objectBoundsOf(
   s: Pick<SceneInputs, 'maskLayer' | 'strokes' | 'width' | 'height'>,
 ): Promise<Bounds | null> {
-  const k = Math.min(1, MASK_PROBE_LONG_EDGE / Math.max(s.width, s.height));
-  const pw = Math.max(1, Math.round(s.width * k));
-  const ph = Math.max(1, Math.round(s.height * k));
-  const img = await drawAsImage(
-    <Group transform={[{ scale: k }]}>
-      <MaskTree maskLayer={s.maskLayer} strokes={s.strokes} width={s.width} height={s.height} />
-    </Group>,
-    { width: pw, height: ph },
-  );
-  if (!img) return null;
-  const b = maskBounds(readAlpha(img), pw, ph, 12);
-  if (!b) return null;
-  return {
-    left: Math.max(0, Math.floor(b.left / k) - 1),
-    top: Math.max(0, Math.floor(b.top / k) - 1),
-    right: Math.min(s.width, Math.ceil(b.right / k) + 1),
-    bottom: Math.min(s.height, Math.ceil(b.bottom / k) + 1),
-  };
+  let layer: SkImage = s.maskLayer;
+  if (s.strokes.length > 0) layer = await bakeMask(s);
+  return maskBoundsExact(readAlpha(layer), layer.width(), layer.height());
 }
 
 export const backgroundColorOf = (o: Pick<ExportOptions, 'background' | 'color'>): string | null =>

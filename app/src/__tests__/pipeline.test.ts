@@ -22,9 +22,13 @@ const solid = (w: number, h: number) => {
 function deps(over: Partial<PipelineDeps> = {}) {
   const persisted: Uint8Array[] = [];
   const d: PipelineDeps = {
+    // the photo is 400x300; the model's working copy is capped, the original stays full size
     prepare: async (uri, cap) => {
       const s = Math.min(1, cap / 400);
-      return { uri: `${uri}#work`, width: Math.round(400 * s), height: Math.round(300 * s) };
+      return {
+        original: { uri: `${uri}#orig`, width: 400, height: 300 },
+        working: { uri: `${uri}#work`, width: Math.round(400 * s), height: Math.round(300 * s) },
+      };
     },
     loadImage: async (uri) => {
       const s = uri.includes('#work') ? 1 : 1;
@@ -69,10 +73,22 @@ describe('runCutout (real Skia + MockEngine)', () => {
     expect(stages[0]).toBe('Reading photo');
   });
 
-  it('respects the working-size cap', async () => {
-    const { d } = deps({ loadImage: async () => solid(200, 150) });
-    const r = await runCutout({ uri: 'u', cap: 200, engine: new MockEngine({ maskSize: 32 }) }, d);
-    expect([r.width, r.height]).toEqual([200, 150]);
+  it('the working cap only limits what the model sees; the result stays at photo size', async () => {
+    const seen: number[] = [];
+    const engine = new MockEngine({ maskSize: 32 });
+    const spy = {
+      ...engine,
+      id: 'spy',
+      label: 'spy',
+      segment: (i: Parameters<MockEngine['segment']>[0]) => {
+        seen.push(i.width);
+        return engine.segment(i);
+      },
+    };
+    const { d } = deps();
+    const r = await runCutout({ uri: 'u', cap: 200, engine: spy }, d);
+    expect(seen).toEqual([200]);
+    expect([r.width, r.height]).toEqual([400, 300]);
   });
 
   it('is cancellable mid-flight', async () => {

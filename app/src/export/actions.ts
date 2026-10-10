@@ -6,6 +6,7 @@ import { readFileHead, writeCacheFile } from '@/lib/files';
 import { assertStorage } from '@/library/library';
 import { Paths } from 'expo-file-system';
 import { pngHasAlphaChannel, isPng } from './png';
+import { imageFromBytes, readAlpha } from '@/engine/skiaOps';
 import type { RenderedExport } from '@/scene/exportRender';
 
 export class ExportError extends Error {
@@ -32,6 +33,7 @@ export function writeVerifiedPng(r: RenderedExport): string {
   }
   const uri = writeCacheFile(exportFileName(), r.png);
   const head = readFileHead(uri, 64);
+  if (r.expectsAlpha) assertPixelsTransparent(r.png, r.width, r.height);
   if (!isPng(head)) throw new ExportError('verify', 'The exported file is not a valid PNG.');
   if (r.expectsAlpha && !pngHasAlphaChannel(head)) {
     throw new ExportError(
@@ -74,5 +76,42 @@ export async function copyImage(image: SkImage): Promise<void> {
     await Clipboard.setImageAsync(base64);
   } catch (e) {
     throw new ExportError('failed', `Could not copy the image: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * A PNG header that says "RGBA" proves nothing if every pixel is opaque. Decode the bytes that will be saved
+ * and require real transparency (something visible AND something transparent) and the expected size.
+ * The check samples a coarse grid, so it is cheap even for 24 MP images.
+ */
+export function assertPixelsTransparent(png: Uint8Array, width: number, height: number): void {
+  let img;
+  try {
+    img = imageFromBytes(png);
+  } catch {
+    throw new ExportError('verify', 'The exported file could not be read back, so it was not saved.');
+  }
+  if (img.width() !== width || img.height() !== height) {
+    throw new ExportError(
+      'verify',
+      `The exported file is ${img.width()}x${img.height()} but ${width}x${height} was expected.`,
+    );
+  }
+  const a = readAlpha(img);
+  const step = Math.max(1, Math.floor(a.length / 200000));
+  let transparent = 0;
+  let visible = 0;
+  for (let i = 0; i < a.length; i += step) {
+    if (a[i] === 0) transparent++;
+    else visible++;
+  }
+  if (transparent === 0) {
+    throw new ExportError(
+      'verify',
+      'The exported file has no transparent pixels, so the transparency was lost and it was not saved.',
+    );
+  }
+  if (visible === 0) {
+    throw new ExportError('verify', 'The exported file is completely transparent, so it was not saved.');
   }
 }

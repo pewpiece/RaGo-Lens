@@ -202,6 +202,15 @@ export function readAlpha(img: SkImage): Uint8Array {
   return out;
 }
 
+/**
+ * Compact copy of a mask: an Alpha_8 image (1 byte per pixel instead of 4). CanvasKit/Skia can encode it as an
+ * 8-bit grey+alpha PNG and draw it with DstIn / dstOut exactly like an RGBA mask layer.
+ */
+export function toAlpha8(img: SkImage): SkImage {
+  const bytes = readAlpha(img);
+  return alpha8Image(bytes, img.width(), img.height());
+}
+
 export function encodePng(img: SkImage): Uint8Array {
   const bytes = img.encodeToBytes(ImageFormat.PNG, 100);
   if (!bytes || bytes.length === 0) throw new Error('Could not encode PNG (out of memory?)');

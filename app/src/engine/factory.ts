@@ -5,7 +5,7 @@ import { MockEngine } from './mockEngine';
 import { OnnxSegmentationEngine } from './onnxEngine';
 import { loadOrt } from './ortRuntime';
 import { devicePrepDeps } from './imagePrepDevice';
-import { prepareWorkingImage } from './imagePrep';
+import { preparePhoto } from './imagePrep';
 import type { PipelineDeps } from './pipeline';
 import type { ImageEngine } from './types';
 import { tempName, writeCacheFile } from '@/lib/files';
@@ -26,7 +26,7 @@ export function getEngine(useMock: boolean): ImageEngine {
 }
 
 export const devicePipelineDeps: PipelineDeps = {
-  prepare: (uri, cap) => prepareWorkingImage(uri, cap, devicePrepDeps),
+  prepare: (uri, cap) => preparePhoto(uri, cap, devicePrepDeps),
   loadImage,
   persistMask: (png) => writeCacheFile(tempName('mask', 'png'), png),
 };

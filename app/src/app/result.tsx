@@ -52,6 +52,11 @@ export default function Result() {
           <Banner tone="error">{notice}</Banner>
         </View>
       ) : null}
+      {result.warning ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <Banner>{result.warning}</Banner>
+        </View>
+      ) : null}
       {!result.foundObject ? (
         <View style={{ marginBottom: spacing.md }}>
           <Banner>
