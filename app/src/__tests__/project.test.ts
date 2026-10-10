@@ -86,6 +86,11 @@ describe('app configuration', () => {
 });
 
 describe('no network access at runtime', () => {
+  /**
+   * The ONE file that may use the network: the optional HD engine, which only talks to an address on the user's own local
+   * network (checked by isLanUrl before any request) and is off by default. Everything else must stay offline.
+   */
+  const NETWORK_FILE = path.join('src', 'engine', 'remoteEngine.ts');
   const sources = walk(path.join(appDir, 'src')).filter(
     (f) =>
       /\.(ts|tsx)$/.test(f) &&
@@ -93,16 +98,35 @@ describe('no network access at runtime', () => {
       !f.includes(`${path.sep}testing${path.sep}`) &&
       !f.endsWith(`about${path.sep}apache2.ts`), // static licence text: contains URLs but makes no requests
   );
+  const rel = (f: string) => path.relative(appDir, f);
   it('finds the app sources', () => expect(sources.length).toBeGreaterThan(30));
   it.each([
     ['fetch(', /\bfetch\s*\(/],
+    ['http(s):// URLs', /https?:\/\//],
+  ])('only the LAN engine file contains %s', (_name, re) => {
+    const offenders = sources.filter((f) => re.test(read(f))).map(rel);
+    expect(offenders.filter((f) => f !== NETWORK_FILE)).toEqual([]);
+  });
+  it.each([
     ['XMLHttpRequest', /XMLHttpRequest/],
     ['WebSocket', /WebSocket/],
     ['axios', /\baxios\b/],
-    ['http(s):// URLs', /https?:\/\//],
-  ])('app code contains no %s', (_name, re) => {
-    const offenders = sources.filter((f) => re.test(read(f)));
-    expect(offenders.map((f) => path.relative(appDir, f))).toEqual([]);
+  ])('no source at all contains %s', (_name, re) => {
+    expect(sources.filter((f) => re.test(read(f))).map(rel)).toEqual([]);
+  });
+  it('the LAN engine refuses non-LAN addresses before any request (guard is in the same file as fetch)', () => {
+    const src = read(path.join(appDir, NETWORK_FILE));
+    expect(src).toContain('isLanUrl(normalizeBaseUrl(this.cfg.baseUrl))');
+    // every public method that sends a request checks the address first
+    for (const method of ['async ping()', 'async segment(']) {
+      const body = src.slice(src.indexOf(method));
+      expect(body.indexOf('this.check()')).toBeGreaterThan(-1);
+      expect(body.indexOf('this.check()')).toBeLessThan(body.indexOf('this.request('));
+    }
+  });
+  it('the HD engine is off by default', () => {
+    const store = read(path.join(appDir, 'src', 'store', 'settingsStore.ts'));
+    expect(store).toMatch(/DEFAULT_REMOTE_SETTINGS:\s*RemoteSettings\s*=\s*\{\s*enabled:\s*false/);
   });
 });
 

@@ -10,12 +10,21 @@ import type { PipelineDeps } from './pipeline';
 import type { ImageEngine } from './types';
 import { tempName, writeCacheFile } from '@/lib/files';
 import { enhanceWorkingCopy } from '@/enhance/apply';
+import { File } from 'expo-file-system';
+import { decodeMaskPng } from './remoteDecode';
+import {
+  DEFAULT_REMOTE,
+  FallbackEngine,
+  RemoteEngine,
+  isLanUrl,
+  lanFetch,
+  normalizeBaseUrl,
+} from './remoteEngine';
 
 let onnx: OnnxSegmentationEngine | null = null;
 
-/** Returns the active engine. The ONNX engine (and its session) is kept for reuse between photos. */
-export function getEngine(useMock: boolean): ImageEngine {
-  if (useMock) return new MockEngine({ delayMs: 600 });
+/** The on-device engine, kept for reuse between photos. */
+function localEngine(): ImageEngine {
   if (!onnx) {
     onnx = new OnnxSegmentationEngine({
       ort: loadOrt,
@@ -24,6 +33,48 @@ export function getEngine(useMock: boolean): ImageEngine {
     });
   }
   return onnx;
+}
+
+export interface RemoteSettingsLike {
+  enabled: boolean;
+  baseUrl: string;
+  token: string;
+  timeoutSec: number;
+}
+
+/**
+ * The active engine. Normally the on-device one. If the user switched on the HD engine and gave it a LAN address and a token,
+ * that one is tried first and the on-device engine quietly takes over when it fails.
+ */
+export function getEngine(useMock: boolean, remote?: RemoteSettingsLike): ImageEngine {
+  if (useMock) return new MockEngine({ delayMs: 600 });
+  const local = localEngine();
+  if (
+    remote?.enabled &&
+    remote.baseUrl &&
+    remote.token &&
+    isLanUrl(normalizeBaseUrl(remote.baseUrl))
+  ) {
+    return new FallbackEngine(remoteEngineFor(remote), local);
+  }
+  return local;
+}
+
+/** The HD engine client for the given settings (also used by "Test connection"). */
+export function remoteEngineFor(remote: RemoteSettingsLike): RemoteEngine {
+  return new RemoteEngine(
+    {
+      ...DEFAULT_REMOTE,
+      baseUrl: remote.baseUrl,
+      token: remote.token,
+      timeoutMs: remote.timeoutSec * 1000,
+    },
+    {
+      fetch: lanFetch,
+      readBytes: async (uri) => new File(uri).bytes(),
+      decodeMask: decodeMaskPng,
+    },
+  );
 }
 
 /** Writes an enhanced copy of the working photo (auto exposure / white balance) and returns it with the matrix used. */

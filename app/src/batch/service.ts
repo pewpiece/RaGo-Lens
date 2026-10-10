@@ -32,7 +32,7 @@ export function deviceBatchRunner(onUpdate?: () => void): BatchRunner {
         {
           uri,
           cap: settings().workingSizeCap,
-          engine: getEngine(settings().useMockEngine),
+          engine: getEngine(settings().useMockEngine, settings().remote),
           edge: settings().edgeLevel,
           signal,
         },

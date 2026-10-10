@@ -265,3 +265,14 @@ file is never modified). Measured in the exported PNG on a red product on green:
   A live "centre of the frame is dark" hint would need a frame processor (a native module); it is listed in WEAKNESSES.md.
 - **Auto exposure / white balance** (`enhance/`): luma percentiles (1 % / 99 %, minimum span) and gray-world gains on mid-tones, clamped (gains 0.8-1.25, stretch <= 2.2), blended by a 0..1 strength into one 4x5 colour matrix (strength 0 = identity, tested).
   It is applied with a Skia colour filter to the model's working copy; the matrix is saved in the edit state and applied to the exported picture only if "Also apply to the exported picture" is on.
+
+## M12: optional engines
+- **HD engine over the LAN** (`engine/remoteEngine.ts`, contract in `docs/GOLESYNC_SEGMENT_ENDPOINT.md`). `RemoteEngine implements ImageEngine`; `FallbackEngine` tries it first and silently uses the on-device model on any failure
+  (unreachable, timeout, 401, 413, 429/503, malformed answer) except a user cancel. Disabled by default (Settings, "HD engine"). It is the **only** file allowed to use the network: `project.test.ts` fails the build if `fetch(` or an
+  http(s) URL appears anywhere else, and checks that the address guard runs before any request. The guard (`isLanUrl`) only accepts private IPv4 (10/8, 172.16/12, 192.168/16), link-local, loopback, `localhost` and `*.local`; a typed address
+  without a scheme gets `http://`. Tested with a fake fetch (no real laptop was involved, the reference server in the contract doc has not been run against the app).
+  **Manifest consequence:** plain http to a LAN IP needs `usesCleartextTraffic` on Android, which `expo-build-properties` now sets. That permits cleartext to any host at the OS level; the app code still refuses non-LAN addresses.
+  The `INTERNET` permission was already present (Metro, debug); `RAGO_BLOCK_INTERNET=1` still strips it for a build that can never touch the network (and then the HD engine cannot work).
+- **AI Smart Select: NOT included, flag off** (`features.ts`). The candidate is MobileSAM (Apache-2.0; TinyViT image encoder plus a prompt decoder, roughly 40 MB of weights as the ONNX pair). I could not fetch any SAM-class ONNX model in this
+  environment (Hugging Face returns 403 through the sandbox proxy, GitHub release/raw paths for the exporters 404/403), so I could verify neither its input/output names, nor its size, nor any timing, let alone speed on a mid-range phone,
+  which is the bar. Bundling an unverified 40 MB model and a decoder wired from memory would break the rule not to claim what was not run. The rest of the editor does not need it: tap select, region, lasso, smart brush and clean-up suggestions cover the Dell-logo case.

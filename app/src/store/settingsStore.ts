@@ -17,6 +17,7 @@ const KEYS = {
   edge: 'cutout_edge',
   editorView: 'editor_view_mode',
   enhance: 'auto_enhance',
+  remote: 'remote_engine',
 } as const;
 
 export interface AutoEnhanceSettings {
@@ -49,6 +50,38 @@ export function parseAutoEnhance(raw: string | null): AutoEnhanceSettings {
   }
 }
 
+export interface RemoteSettings {
+  enabled: boolean;
+  baseUrl: string;
+  token: string;
+  /** 5..120 */
+  timeoutSec: number;
+}
+
+export const DEFAULT_REMOTE_SETTINGS: RemoteSettings = {
+  enabled: false,
+  baseUrl: '',
+  token: '',
+  timeoutSec: 30,
+};
+
+export function parseRemoteSettings(raw: string | null): RemoteSettings {
+  try {
+    const o = JSON.parse(raw ?? '{}') as Partial<RemoteSettings>;
+    return {
+      enabled: o.enabled === true,
+      baseUrl: typeof o.baseUrl === 'string' ? o.baseUrl.trim().slice(0, 200) : '',
+      token: typeof o.token === 'string' ? o.token.slice(0, 200) : '',
+      timeoutSec:
+        typeof o.timeoutSec === 'number' && Number.isFinite(o.timeoutSec)
+          ? Math.min(120, Math.max(5, Math.round(o.timeoutSec)))
+          : 30,
+    };
+  } catch {
+    return DEFAULT_REMOTE_SETTINGS;
+  }
+}
+
 export interface SettingsState {
   hydrated: boolean;
   exportDefaults: ExportOptions;
@@ -66,6 +99,8 @@ export interface SettingsState {
   editorViewMode: ViewMode | null;
   /** Optional auto exposure / white balance before the cut-out. */
   autoEnhance: AutoEnhanceSettings;
+  /** Optional HD engine on the user's own computer (LAN only, off by default). */
+  remote: RemoteSettings;
   hydrate(): Promise<void>;
   setExportDefaults(patch: Partial<ExportOptions>): Promise<void>;
   setWorkingSizeCap(px: number): Promise<void>;
@@ -75,6 +110,7 @@ export interface SettingsState {
   setEdgeLevel(level: EdgeLevel): Promise<void>;
   setEditorViewMode(mode: ViewMode): Promise<void>;
   setAutoEnhance(patch: Partial<AutoEnhanceSettings>): Promise<void>;
+  setRemote(patch: Partial<RemoteSettings>): Promise<void>;
 }
 
 export function clampWorkingSize(px: number): number {
@@ -100,9 +136,10 @@ export function createSettingsStore(kv: KeyValueStorage) {
     edgeLevel: DEFAULT_EDGE,
     editorViewMode: null,
     autoEnhance: DEFAULT_AUTO_ENHANCE,
+    remote: DEFAULT_REMOTE_SETTINGS,
     async hydrate() {
       try {
-        const [exp, size, mock, script, enhance, edge, view, auto] = await Promise.all([
+        const [exp, size, mock, script, enhance, edge, view, auto, remote] = await Promise.all([
           kv.get(KEYS.exportDefaults),
           kv.get(KEYS.workingSize),
           kv.get(KEYS.mockEngine),
@@ -111,6 +148,7 @@ export function createSettingsStore(kv: KeyValueStorage) {
           kv.get(KEYS.edge),
           kv.get(KEYS.editorView),
           kv.get(KEYS.enhance),
+          kv.get(KEYS.remote),
         ]);
         set({
           exportDefaults: parseExportOptions(exp),
@@ -121,6 +159,7 @@ export function createSettingsStore(kv: KeyValueStorage) {
           edgeLevel: parseEdgeLevel(edge),
           editorViewMode: isViewMode(view) ? view : null,
           autoEnhance: parseAutoEnhance(auto),
+          remote: parseRemoteSettings(remote),
           hydrated: true,
         });
       } catch {
@@ -136,6 +175,11 @@ export function createSettingsStore(kv: KeyValueStorage) {
       const v = clampWorkingSize(px);
       set({ workingSizeCap: v });
       await safeSet(KEYS.workingSize, String(v));
+    },
+    async setRemote(patch) {
+      const next = parseRemoteSettings(JSON.stringify({ ...get().remote, ...patch }));
+      set({ remote: next });
+      await safeSet(KEYS.remote, JSON.stringify(next));
     },
     async setAutoEnhance(patch) {
       const next = { ...get().autoEnhance, ...patch };

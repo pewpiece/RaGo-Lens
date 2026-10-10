@@ -18,6 +18,7 @@ export default function Processing() {
   const settingsCap = useSettingsStore((s) => s.workingSizeCap);
   const edge = useSettingsStore((s) => s.edgeLevel);
   const autoEnhance = useSettingsStore((s) => s.autoEnhance);
+  const remote = useSettingsStore((s) => s.remote);
   const useMock = useSettingsStore((s) => s.useMockEngine);
   const [progress, setProgress] = useState(0);
   const [label, setLabel] = useState('Starting');
@@ -61,7 +62,7 @@ export default function Processing() {
           {
             uri: sourceUri,
             cap,
-            engine: getEngine(useMock),
+            engine: getEngine(useMock, remote),
             edge,
             enhance: autoEnhance.enabled ? autoEnhance.strength : 0,
             signal: controller.signal,
@@ -91,7 +92,7 @@ export default function Processing() {
       }
     })();
     return () => controller.abort(); // leaving the screen cancels the work
-  }, [sourceUri, capOverride, settingsCap, edge, autoEnhance, useMock, attempt]);
+  }, [sourceUri, capOverride, settingsCap, edge, autoEnhance, remote, useMock, attempt]);
 
   const cancel = useCallback(() => {
     abort.current?.abort();

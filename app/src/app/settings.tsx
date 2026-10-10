@@ -1,4 +1,4 @@
-import { Alert, View } from 'react-native';
+import { Alert, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 import {
@@ -14,6 +14,8 @@ import {
   Toggle,
 } from '@/components/ui';
 import { Slider } from '@/components/Slider';
+import { isLanUrl, normalizeBaseUrl } from '@/engine/remoteEngine';
+import { useTheme } from '@/theme/ThemeProvider';
 import { clearLibrary } from '@/library/library';
 import { useSettingsStore, useThemeStore } from '@/store/instances';
 import { WORKING_SIZE_CHOICES } from '@/store/settingsStore';
@@ -33,6 +35,34 @@ export default function Settings() {
   const cap = useSettingsStore((s) => s.workingSizeCap);
   const edgeLevel = useSettingsStore((s) => s.edgeLevel);
   const autoEnhance = useSettingsStore((s) => s.autoEnhance);
+  const remote = useSettingsStore((s) => s.remote);
+  const setRemote = useSettingsStore((s) => s.setRemote);
+  const { tokens } = useTheme();
+  const [testing, setTesting] = useState(false);
+  const [remoteNote, setRemoteNote] = useState<{ tone: 'info' | 'error'; text: string } | null>(
+    null,
+  );
+  const fieldStyle = {
+    borderWidth: 1,
+    borderColor: tokens.borderStrong,
+    borderRadius: 14,
+    padding: spacing.md,
+    color: tokens.text,
+    minHeight: 48,
+  } as const;
+  const testRemote = async () => {
+    setTesting(true);
+    setRemoteNote(null);
+    try {
+      const { remoteEngineFor } = await import('@/engine/factory');
+      const model = await remoteEngineFor(remote).ping();
+      setRemoteNote({ tone: 'info', text: `Connected. Model: ${model}.` });
+    } catch (e) {
+      setRemoteNote({ tone: 'error', text: e instanceof Error ? e.message : 'Could not connect.' });
+    } finally {
+      setTesting(false);
+    }
+  };
   const setAutoEnhance = useSettingsStore((s) => s.setAutoEnhance);
   const setEdgeLevel = useSettingsStore((s) => s.setEdgeLevel);
   const setCap = useSettingsStore((s) => s.setWorkingSizeCap);
@@ -190,6 +220,55 @@ export default function Settings() {
           ]}
         />
       </Row>
+      <SectionTitle>HD engine (your laptop)</SectionTitle>
+      <Toggle
+        label="Use a larger model on my laptop"
+        hint="Sends the photo over your own Wi-Fi to a computer you set up. Off by default. If it cannot be reached, the phone does the cut-out itself."
+        value={remote.enabled}
+        onChange={(v) => void setRemote({ enabled: v })}
+      />
+      {remote.enabled ? (
+        <View style={{ gap: spacing.sm }}>
+          <TextInput
+            accessibilityLabel="Laptop address"
+            placeholder="192.168.1.20:8787"
+            placeholderTextColor={tokens.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={remote.baseUrl}
+            onChangeText={(v) => void setRemote({ baseUrl: v })}
+            style={fieldStyle}
+          />
+          <TextInput
+            accessibilityLabel="Laptop token"
+            placeholder="Token"
+            placeholderTextColor={tokens.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            value={remote.token}
+            onChangeText={(v) => void setRemote({ token: v })}
+            style={fieldStyle}
+          />
+          {remote.baseUrl && !isLanUrl(normalizeBaseUrl(remote.baseUrl)) ? (
+            <Banner tone="error">
+              That address is not on your local network, so it will not be used.
+            </Banner>
+          ) : null}
+          <Button
+            label={testing ? 'Testing…' : 'Test connection'}
+            busy={testing}
+            onPress={() => void testRemote()}
+            testID="remote-test"
+          />
+          {remoteNote ? <Banner tone={remoteNote.tone}>{remoteNote.text}</Banner> : null}
+          <Muted>
+            Only addresses on your local network are allowed. Details:
+            docs/GOLESYNC_SEGMENT_ENDPOINT.md in the project.
+          </Muted>
+        </View>
+      ) : null}
+
       <Toggle
         label="Developer: use mock engines"
         hint="Skips the real models: cut-out becomes a centre ellipse and Scan returns sample text. For testing the UI."
