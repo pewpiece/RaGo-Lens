@@ -7,9 +7,16 @@ export interface OcrFrame {
   height: number;
 }
 
+export interface OcrElement {
+  text: string;
+  frame?: OcrFrame;
+}
+
 export interface OcrLine {
   text: string;
   frame?: OcrFrame;
+  /** Words (or symbols) of the line, when the recogniser reports them. */
+  elements?: OcrElement[];
 }
 
 export interface OcrBlock {
@@ -50,10 +57,17 @@ export interface FormattedLine {
   paragraphBreak: boolean;
 }
 
+/** How the finished text is laid out: plain lines, joined paragraphs, or Markdown (headings with #). */
+export type TextFormat = 'plain' | 'paragraphs' | 'markdown';
+
 export interface FormattedScan {
   lines: FormattedLine[];
   /** Markdown: headings (#), bullets (-), numbers (1.) and paragraphs. */
   markdown: string;
-  /** Plain text with simple bullets, no markup. */
+  /** Plain text, one line per recognised line, simple bullets, no markup. */
   plain: string;
+  /** Plain text where wrapped lines are joined into paragraphs separated by a blank line. */
+  paragraphs: string;
+  /** Number of places where a symbol may be missing (marked with the gap mark in the text). */
+  gapCount: number;
 }

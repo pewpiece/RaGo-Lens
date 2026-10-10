@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Share } from 'react-native';
+import { Alert, Share, StyleSheet } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import ScanScreen from '@/app/scan';
 import { markdownToPlain } from '@/scan/markdown';
@@ -59,8 +59,10 @@ describe('Scan screen', () => {
     useScanSession.getState().start('file:///page.jpg');
     await render(wrap(<ScanScreen />));
     const editor = await screen.findByTestId('scan-text');
-    expect(editor.props.value).toContain('## MEETING NOTES');
-    expect(editor.props.value).toContain('- finish the design');
+    // plain text by default: no Markdown symbols
+    expect(editor.props.value).toContain('MEETING NOTES');
+    expect(editor.props.value).not.toContain('##');
+    expect(editor.props.value).toContain('• finish the design');
     expect(saveScanToLibrary).toHaveBeenCalledTimes(1);
     expect(useScanSession.getState().itemId).toBe('row1');
   });
@@ -75,21 +77,68 @@ describe('Scan screen', () => {
     });
   });
 
-  it('copies markdown, copies plain text and shares', async () => {
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+  it('switches the layout after scanning: plain, paragraphs, markdown', async () => {
     useScanSession.getState().start('file:///page.jpg');
     await render(wrap(<ScanScreen />));
     const editor = await screen.findByTestId('scan-text');
-    const md = editor.props.value as string;
+    expect(editor.props.value).not.toContain('##');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Markdown' }));
+    expect(screen.getByTestId('scan-text').props.value).toContain('## MEETING NOTES');
+    expect(screen.getByTestId('scan-text').props.value).toContain('- finish the design');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Paragraphs' }));
+    expect(screen.getByTestId('scan-text').props.value).not.toContain('##');
+  });
+
+  it('asks before replacing edited text with a new layout', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    useScanSession.getState().start('file:///page.jpg');
+    await render(wrap(<ScanScreen />));
+    await fireEvent.changeText(await screen.findByTestId('scan-text'), 'my own words');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Markdown' }));
+    expect(alert).toHaveBeenCalled();
+    expect(screen.getByTestId('scan-text').props.value).toBe('my own words');
+    alert.mockRestore();
+  });
+
+  it('inserts a symbol at the cursor from the symbol row', async () => {
+    useScanSession.getState().start('file:///page.jpg');
+    await render(wrap(<ScanScreen />));
+    await fireEvent.changeText(await screen.findByTestId('scan-text'), 'x 5');
+    await fireEvent(screen.getByTestId('scan-text'), 'selectionChange', {
+      nativeEvent: { selection: { start: 2, end: 2 } },
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Insert =' }));
+    expect(screen.getByTestId('scan-text').props.value).toBe('x =5');
+  });
+
+  it('preview shows headings larger than body text', async () => {
+    useScanSession.getState().start('file:///page.jpg');
+    await render(wrap(<ScanScreen />));
+    await screen.findByTestId('scan-text');
+    await fireEvent.press(screen.getByRole('button', { name: 'Preview' }));
+    const head = screen.getByText('MEETING NOTES');
+    const body = screen.getByText('Discussed the launch plan');
+    const size = (n: { props: { style?: unknown } }) =>
+      (StyleSheet.flatten(n.props.style as never) as { fontSize: number }).fontSize;
+    expect(size(head)).toBeGreaterThan(size(body));
+  });
+
+  it('copies and shares the text exactly as shown; Copy plain only for Markdown', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    useScanSession.getState().start('file:///page.jpg');
+    await render(wrap(<ScanScreen />));
+    const shown = (await screen.findByTestId('scan-text')).props.value as string;
+    expect(screen.queryByRole('button', { name: 'Copy plain' })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Copy' }));
-    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(md);
+    expect(Clipboard.setStringAsync).toHaveBeenLastCalledWith(shown);
+    await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    expect(share).toHaveBeenCalledWith({ message: shown });
+    await fireEvent.press(screen.getByRole('radio', { name: 'Markdown' }));
+    const md = screen.getByTestId('scan-text').props.value as string;
     await fireEvent.press(screen.getByRole('button', { name: 'Copy plain' }));
     const plain = (Clipboard.setStringAsync as jest.Mock).mock.calls.at(-1)![0] as string;
     expect(plain).toBe(markdownToPlain(md));
-    expect(plain).toContain('• finish the design');
     expect(plain).not.toContain('##');
-    await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
-    expect(share).toHaveBeenCalledWith({ message: md });
     share.mockRestore();
   });
 

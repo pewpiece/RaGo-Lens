@@ -55,7 +55,7 @@ const scan = (): ScanResult => ({
   engineId: 'mlkit',
   script: 'latin',
   foundText: true,
-  formatted: { lines: [], markdown: '## Hi', plain: 'Hi' },
+  formatted: { lines: [], markdown: '## Hi', plain: 'Hi', paragraphs: 'Hi', gapCount: 0 },
 });
 
 beforeEach(async () => {
@@ -64,10 +64,18 @@ beforeEach(async () => {
 });
 
 describe('scan items in the library', () => {
+  it('saves plain text as a .txt file by default', async () => {
+    const row = await saveScanToLibrary(scan(), 'Hi', { makeThumb: async () => temp('t.jpg') });
+    expect(row.resultUri).toMatch(/-result\.txt$/);
+  });
+
   it('saves the page photo, a markdown file and a thumbnail as a scan item with the right extensions', async () => {
-    const row = await saveScanToLibrary(scan(), '## Hi\n\n- one', {
-      makeThumb: async () => temp('t.jpg'),
-    });
+    const row = await saveScanToLibrary(
+      scan(),
+      '## Hi\n\n- one',
+      { makeThumb: async () => temp('t.jpg') },
+      'markdown',
+    );
     expect(row.mode).toBe('scan');
     expect(row.resultUri).toMatch(/-result\.md$/);
     expect(row.thumbUri).toMatch(/-thumb\.jpg$/);
@@ -77,6 +85,8 @@ describe('scan items in the library', () => {
       engine: 'mlkit',
       script: 'latin',
       chars: 2,
+      format: 'markdown',
+      texts: { plain: 'Hi', paragraphs: 'Hi', markdown: '## Hi' },
     });
     expect(lib.maskUriOf(row)).toBeNull(); // scans have no mask
     expect(lib.listItems().map((r) => r.mode)).toEqual(['scan']);

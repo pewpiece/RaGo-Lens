@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import type { ResultRow } from '@/db/schema';
 import { getMode } from '@/modes/registry';
 import { useSession } from '@/store/session';
+import { parseSavedScan } from '@/scan/savedScan';
 import { useScanSession } from '@/store/scanSession';
 import { readItemText } from './library';
 import { loadItem } from './openItem';
@@ -20,7 +21,10 @@ export async function openLibraryItem(row: ResultRow): Promise<void> {
   if (row.mode === 'scan') {
     try {
       const text = await readItemText(row);
-      useScanSession.getState().openSaved({ sourceUri: row.originalUri, text, itemId: row.id });
+      const saved = parseSavedScan(row.settingsJson);
+      useScanSession
+        .getState()
+        .openSaved({ sourceUri: row.originalUri, text, itemId: row.id, ...saved });
       router.push('/scan');
     } catch {
       Alert.alert(

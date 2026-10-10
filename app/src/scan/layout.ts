@@ -1,10 +1,11 @@
-import type { OcrFrame } from './types';
+import type { OcrElement, OcrFrame } from './types';
 
 /** A recognised line with the block it came from (used to keep paragraph hints). */
 export interface FlatLine {
   text: string;
   frame?: OcrFrame;
   blockId: number;
+  elements?: OcrElement[];
 }
 
 export interface OrderedLine extends FlatLine {
@@ -141,6 +142,9 @@ export function mergeRows(lines: OrderedLine[]): OrderedLine[] {
         frame: { left, top, width: r - left, height: b - top },
         blockId: group[0]!.blockId,
         sectionStart: group[0]!.sectionStart,
+        elements: sorted.every((g) => g.elements?.length)
+          ? sorted.flatMap((g) => g.elements!)
+          : undefined,
       });
     }
     group = [];

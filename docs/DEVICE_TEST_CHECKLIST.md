@@ -5,7 +5,7 @@ Run this on a real Android phone with the APK from a GitHub Release. Tick each l
 
 ## 0. Install
 - [ ] Install the APK (allow "install unknown apps"). App name "RaGo Lens", your logo as icon, dark splash.
-- [ ] First launch does not crash; Home shows the Cutout card active and Scan "Coming soon".
+- [ ] First launch does not crash; Home shows the Cutout and Scan cards, both active.
 - [ ] Note the phone model and Android version: ______________________
 
 ## 1. Cutout on different subjects (use the camera, plain surface, good light unless stated)
@@ -69,6 +69,12 @@ Mark each: result ___ /5, time ___ s, notes.
 - [ ] Batch: pick 5 photos, force-close the app halfway, reopen: the queue resumes.
 - [ ] Capture: level hint, light hint, framing grid, post-shot quality tips; deny sensors/camera gracefully.
 - [ ] TalkBack on: Home, Editor tools, Export tabs are navigable.
+
+## 10. Scan
+- [ ] Scan a notebook page. Default text is plain (no # or - symbols). Switch Plain / Paragraphs / Markdown: the text changes; with edits made, you are asked first.
+- [ ] Preview shows headings bigger than body text. Copy and Share send the text as shown.
+- [ ] **Maths page**: write `x = 5`, `a + b = c`, `E = mc²`, `y ≥ 2`. Note which symbols are skipped; check spots marked □ are real gaps; fix them with the symbol row.
+- [ ] Reopen a saved scan from the Library and switch layout again.
 
 ## Report back
 Phone, Android version, times, quality scores, and any crash or blank screen (with what you did just before).

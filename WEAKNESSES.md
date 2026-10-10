@@ -47,7 +47,8 @@ Written honestly: **I could not build or run this app on an Android device or em
 - Verified in CI on an emulator only (real ML Kit on a printed sample page); **not tried on a real notebook photo or on handwriting**. Messy cursive and mixed languages will often come out wrong. Always re-read the result.
 - Devanagari recognition is exposed but untested on real Devanagari pages. Mixed Latin + Devanagari pages need a Retry with the other setting.
 - The formatter guesses structure from line positions. Skewed or curved pages, photos taken at an angle, and notebooks with ruled lines running through the text can produce wrong headings, merged lines or wrong nesting. The text is editable for that reason.
-- **Maths notation is not supported.** Exponents, stacked fractions (numerator over denominator), pi and special symbols come out as garbled letters or split lines. Formula sheets are the worst case for this recogniser.
+- **Maths is only partly supported.** ML Kit is built for words, not formulas: thin symbols such as `=` can be skipped, and exponents, stacked fractions, pi and special symbols can come out garbled or split.
+  The app marks suspected gaps with `□` (a heuristic, unverified on real pages, may miss some or mark false ones) and offers a symbol row for fixing by hand. It does not read formulas; that needs a maths model that is not included.
 - Column detection needs a clear vertical gap; pages with three or more columns, tables or text wrapped around pictures may still read in the wrong order. Pages photographed at a steep angle read worse than flat ones.
 - ML Kit is proprietary (free under Google's terms) and bundles five script models, so the APK is larger than the cut-out alone needed.
 - No export to a file yet: Copy, Copy plain and Share (text) only.
@@ -97,3 +98,5 @@ Everything below was built and tested in a sandbox (Node + CanvasKit CPU raster,
 - The mask PNG decode needs a transient RGBA copy of the mask (Alpha_8 cannot be read directly in CanvasKit), a short memory spike on big photos.
 - JPEG export always has an opaque background by definition; the transparency guarantee applies to PNG/WebP only. Whether the receiving app keeps the alpha is up to that app.
 - The original failure (black watch on a dark laptop with logo) could not be reproduced as an alpha-flattening bug in code; see DECISIONS.md M0. Whether the real photo now cuts out well is **unverified until you add it** under `app/test/fixtures/real/`.
+- Scan layouts (Plain / Paragraphs / Markdown), the Edit/Preview toggle and the symbol row are tested with jest only, never on a phone. The `□` gap detector uses word positions from ML Kit that I have not seen on real output.
+- Heading size exists only in the in-app preview; copied or shared plain text carries no sizes.

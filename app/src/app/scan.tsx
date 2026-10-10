@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Easing,
   Image,
   Modal,
+  Pressable,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -17,15 +20,23 @@ import { Banner, Button, Header, Muted, Screen, Segmented, Toggle } from '@/comp
 import { isScanCancelled, toScanError, type ScanError } from '@/scan/errors';
 import { deviceSaveDeps, deviceScanDeps, getOcrEngine } from '@/scan/factory';
 import { markdownToPlain } from '@/scan/markdown';
+import { headingSet, previewLines } from '@/scan/preview';
+import { GAP_MARK, SYMBOL_ROWS } from '@/scan/symbols';
 import { runScan } from '@/scan/pipeline';
 import { saveScanText, saveScanToLibrary } from '@/scan/saveScan';
-import type { ScanScript } from '@/scan/types';
+import type { ScanScript, TextFormat } from '@/scan/types';
 import { useSettingsStore } from '@/store/instances';
 import { useScanSession } from '@/store/scanSession';
 import { useTheme } from '@/theme/ThemeProvider';
 import { fontSizes, fonts, radii, spacing } from '@/theme/tokens';
 
 type Phase = 'running' | 'done' | 'error';
+
+const FORMATS: { value: TextFormat; label: string }[] = [
+  { value: 'plain', label: 'Plain' },
+  { value: 'paragraphs', label: 'Paragraphs' },
+  { value: 'markdown', label: 'Markdown' },
+];
 
 const SCRIPTS: { value: ScanScript; label: string }[] = [
   { value: 'latin', label: 'English / Latin' },
@@ -40,6 +51,8 @@ export default function ScanScreen() {
   const preloaded = useScanSession((s) => s.preloaded);
   const result = useScanSession((s) => s.result);
   const text = useScanSession((s) => s.text);
+  const format = useScanSession((s) => s.format);
+  const texts = useScanSession((s) => s.texts);
   const itemId = useScanSession((s) => s.itemId);
   const notice = useScanSession((s) => s.notice);
   const settingsScript = useSettingsStore((s) => s.scanScript);
@@ -55,6 +68,8 @@ export default function ScanScreen() {
   const [retryScript, setRetryScript] = useState<ScanScript>(scriptOverride ?? settingsScript);
   const [retryEnhance, setRetryEnhance] = useState<boolean>(enhanceOverride ?? settingsEnhance);
   const [toast, setToast] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
+  const [sel, setSel] = useState({ start: 0, end: 0 });
   const abort = useRef<AbortController | null>(null);
   const [shimmer] = useState(() => new Animated.Value(0));
   const script = scriptOverride ?? settingsScript;
@@ -112,7 +127,7 @@ export default function ScanScreen() {
         let note: string | null = null;
         if (r.foundText) {
           try {
-            id = (await saveScanToLibrary(r, r.markdown, deviceSaveDeps)).id;
+            id = (await saveScanToLibrary(r, r.formatted.plain, deviceSaveDeps, 'plain')).id;
           } catch (e) {
             note = `Not saved to your library: ${e instanceof Error ? e.message : 'unknown error'}`;
           }
@@ -170,6 +185,32 @@ export default function ScanScreen() {
     useScanSession.getState().start(sourceUri, retryScript, retryEnhance);
     setAttempt((a) => a + 1);
   };
+
+  const pickFormat = (next: TextFormat) => {
+    if (next === format || !texts) return;
+    const edited = text !== texts[format];
+    const apply = () => useScanSession.getState().setFormat(next);
+    if (!edited) return apply();
+    Alert.alert(
+      'Change the layout?',
+      'Your edits to the text will be replaced by the new layout. Copy your text first if you want to keep it.',
+      [
+        { text: 'Keep my text', style: 'cancel' },
+        { text: 'Change layout', style: 'destructive', onPress: apply },
+      ],
+    );
+  };
+
+  const insertSymbol = (sym: string) => {
+    const a = Math.min(sel.start, sel.end);
+    const b = Math.max(sel.start, sel.end);
+    useScanSession.getState().setText(text.slice(0, a) + sym + text.slice(b));
+    const pos = a + sym.length;
+    setSel({ start: pos, end: pos });
+  };
+
+  const gapsLeft = text.split(GAP_MARK).length - 1;
+  const headings = headingSet(texts?.markdown);
 
   const noText = phase === 'done' && !preloaded && result && !result.foundText;
 
@@ -252,25 +293,103 @@ export default function ScanScreen() {
               </Banner>
             </View>
           ) : null}
-          <TextInput
-            testID="scan-text"
-            accessibilityLabel="Recognised text, editable"
-            multiline
-            value={text}
-            onChangeText={(v) => useScanSession.getState().setText(v)}
-            placeholder="Recognised text appears here. You can edit it."
-            placeholderTextColor={t.textMuted}
-            textAlignVertical="top"
-            style={[
-              styles.editor,
-              {
-                color: t.text,
-                backgroundColor: t.surface,
-                borderColor: t.borderStrong,
-                fontFamily: fonts.mono,
-              },
-            ]}
-          />
+          {texts ? (
+            <Segmented<TextFormat>
+              label="Text layout"
+              value={format}
+              onChange={pickFormat}
+              options={FORMATS}
+            />
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm }}>
+            <Button
+              label="Edit"
+              kind={preview ? 'ghost' : 'primary'}
+              style={{ flex: 1 }}
+              onPress={() => setPreview(false)}
+            />
+            <Button
+              label="Preview"
+              kind={preview ? 'primary' : 'ghost'}
+              style={{ flex: 1 }}
+              onPress={() => setPreview(true)}
+            />
+          </View>
+          {gapsLeft > 0 ? (
+            <View style={{ marginBottom: spacing.sm }}>
+              <Banner>
+                {`${gapsLeft} spot${gapsLeft === 1 ? '' : 's'} marked ${GAP_MARK}: a symbol such as = or + may be missing there. Check the photo and type it in.`}
+              </Banner>
+            </View>
+          ) : null}
+          {preview ? (
+            <ScrollView
+              testID="scan-preview"
+              style={[styles.editor, { backgroundColor: t.surface, borderColor: t.borderStrong }]}
+            >
+              {previewLines(text, headings).map((l, i) => (
+                <Text
+                  key={i}
+                  accessibilityRole={l.heading ? 'header' : undefined}
+                  style={
+                    l.heading
+                      ? {
+                          color: t.text,
+                          fontSize: fontSizes.title * 1.3,
+                          fontWeight: '800',
+                          lineHeight: fontSizes.title * 1.7,
+                          marginTop: spacing.sm,
+                        }
+                      : { color: t.text, fontSize: fontSizes.body, lineHeight: 22 }
+                  }
+                >
+                  {l.blank ? ' ' : l.text}
+                </Text>
+              ))}
+            </ScrollView>
+          ) : (
+            <TextInput
+              testID="scan-text"
+              accessibilityLabel="Recognised text, editable"
+              multiline
+              value={text}
+              onChangeText={(v) => useScanSession.getState().setText(v)}
+              onSelectionChange={(e) => setSel(e.nativeEvent.selection)}
+              selection={sel}
+              placeholder="Recognised text appears here. You can edit it."
+              placeholderTextColor={t.textMuted}
+              textAlignVertical="top"
+              style={[
+                styles.editor,
+                {
+                  color: t.text,
+                  backgroundColor: t.surface,
+                  borderColor: t.borderStrong,
+                  fontFamily: fonts.mono,
+                },
+              ]}
+            />
+          )}
+          {!preview ? (
+            <ScrollView
+              horizontal
+              keyboardShouldPersistTaps="always"
+              style={{ flexGrow: 0, marginTop: spacing.sm }}
+              accessibilityLabel="Symbols"
+            >
+              {SYMBOL_ROWS.flat().map((sym) => (
+                <Pressable
+                  key={sym}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Insert ${sym}`}
+                  onPress={() => insertSymbol(sym)}
+                  style={[styles.sym, { backgroundColor: t.surfaceRaised, borderColor: t.border }]}
+                >
+                  <Text style={{ color: t.text, fontSize: fontSizes.bodyLg }}>{sym}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
           {toast ? (
             <Muted style={{ textAlign: 'center', marginTop: spacing.sm }}>{toast}</Muted>
           ) : null}
@@ -282,16 +401,18 @@ export default function ScanScreen() {
               style={{ flex: 1, paddingHorizontal: spacing.sm }}
               onPress={() => void Clipboard.setStringAsync(text).then(() => flash('Copied'))}
             />
-            <Button
-              label="Copy plain"
-              disabled={!text}
-              style={{ flex: 1, paddingHorizontal: spacing.sm }}
-              onPress={() =>
-                void Clipboard.setStringAsync(markdownToPlain(text)).then(() =>
-                  flash('Copied as plain text'),
-                )
-              }
-            />
+            {format === 'markdown' ? (
+              <Button
+                label="Copy plain"
+                disabled={!text}
+                style={{ flex: 1, paddingHorizontal: spacing.sm }}
+                onPress={() =>
+                  void Clipboard.setStringAsync(markdownToPlain(text)).then(() =>
+                    flash('Copied as plain text'),
+                  )
+                }
+              />
+            ) : null}
             <Button
               label="Share"
               disabled={!text}
@@ -372,6 +493,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     fontSize: fontSizes.body,
     lineHeight: 22,
+  },
+  sym: {
+    minWidth: 44,
+    height: 44,
+    marginRight: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backdrop: { flex: 1, justifyContent: 'flex-end' },
   sheet: {

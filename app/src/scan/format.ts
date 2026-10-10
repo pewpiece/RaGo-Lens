@@ -1,5 +1,13 @@
 import { mergeRows, readingOrder, type FlatLine } from './layout';
-import type { FormattedKind, FormattedLine, FormattedScan, OcrBlock, OcrResult } from './types';
+import { looksMathy, markSymbolGaps, GAP_MARK } from './symbols';
+import type {
+  FormattedKind,
+  FormattedLine,
+  FormattedScan,
+  OcrBlock,
+  OcrResult,
+  TextFormat,
+} from './types';
 
 const BULLET_RE = /^\s*(?:[-–—•·●○▪■□◦*>»]|o(?=\s)|\+)\s*/;
 const NUMBER_RE = /^\s*(\d{1,3})\s*[.):]\s+/;
@@ -36,12 +44,12 @@ export function cleanLine(s: string): string {
     .trim();
 }
 
-function toRows(blocks: OcrBlock[]): Row[] {
+function toRows(blocks: OcrBlock[], counter: { gaps: number }): Row[] {
   const flat: FlatLine[] = [];
   blocks.forEach((b, blockId) => {
     b.lines.forEach((l) => {
       const text = cleanLine(l.text);
-      if (text) flat.push({ text, frame: l.frame, blockId });
+      if (text) flat.push({ text, frame: l.frame, blockId, elements: l.elements });
     });
   });
   // multi-column pages are read column by column; split rows (label + expression) are re-joined
@@ -49,8 +57,10 @@ function toRows(blocks: OcrBlock[]): Row[] {
   let prevBlock = -1;
   return ordered.map((l) => {
     const f = l.frame;
+    const marked = markSymbolGaps(l.text, l.elements);
+    counter.gaps += marked.gaps;
     const row: Row = {
-      text: l.text,
+      text: marked.text,
       left: f?.left ?? 0,
       top: f?.top ?? 0,
       right: f ? f.left + f.width : 0,
@@ -73,6 +83,11 @@ export function parseMarker(text: string): { kind: FormattedKind; rest: string; 
   // "o" and "-" must be followed by a space-separated word to count as a bullet (avoid eating "ok", "-5")
   if (bul && bul[0].length > 0 && text.length > bul[0].length) {
     const marker = bul[0].trim();
+    // "+ 3 = 5", "- 2x", "> 4", "* 3": operators at the start of a maths line are symbols, not list markers
+    if (/^[-–—+*>»]$/.test(marker)) {
+      const rest = text.slice(bul[0].length);
+      if (!/^\p{L}/u.test(rest) || looksMathy(rest)) return { kind: 'text', rest: text };
+    }
     if (marker === 'o' || marker === '+' || /^[-–—*>»]$/.test(marker)) {
       if (!/^\s*\S\s+\S/.test(text)) return { kind: 'text', rest: text };
     }
@@ -96,10 +111,11 @@ const isMostlyUpper = (s: string): boolean => {
  * because notebook pages are mostly one-thought-per-line and reflowing them destroys the structure.
  */
 export function formatScan(result: OcrResult): FormattedScan {
-  const rows = toRows(result.blocks);
+  const counter = { gaps: 0 };
+  const rows = toRows(result.blocks, counter);
   if (rows.length === 0) {
     const fallback = cleanLine(result.text);
-    return { lines: [], markdown: fallback, plain: fallback };
+    return { lines: [], markdown: fallback, plain: fallback, paragraphs: fallback, gapCount: 0 };
   }
   const framed = rows.filter((r) => r.hasFrame && r.height > 0);
   const H = median(framed.map((r) => r.height)) || 1;
@@ -159,7 +175,13 @@ export function formatScan(result: OcrResult): FormattedScan {
     prev = r;
   });
 
-  return { lines: out, markdown: toMarkdown(out), plain: toPlain(out) };
+  return {
+    lines: out,
+    markdown: toMarkdown(out),
+    plain: toPlain(out),
+    paragraphs: toParagraphs(out),
+    gapCount: counter.gaps,
+  };
 }
 
 export function toMarkdown(lines: FormattedLine[]): string {
@@ -200,3 +222,42 @@ export function toPlain(lines: FormattedLine[]): string {
   });
   return parts.join('').trim();
 }
+
+/** Text lines that belong together are joined into one paragraph; blank lines separate paragraphs and headings. */
+export function toParagraphs(lines: FormattedLine[]): string {
+  const paras: string[] = [];
+  let cur: string | null = null;
+  const flush = () => {
+    if (cur !== null) paras.push(cur);
+    cur = null;
+  };
+  lines.forEach((l, i) => {
+    const pad = '  '.repeat(l.indent);
+    if (l.kind === 'heading') {
+      flush();
+      paras.push(l.text);
+    } else if (l.kind === 'bullet' || l.kind === 'numbered') {
+      flush();
+      paras.push(`${pad}${l.kind === 'bullet' ? '•' : `${l.number ?? '1'}.`} ${l.text}`);
+    } else if (cur !== null && !l.paragraphBreak && lines[i - 1]?.kind === 'text') {
+      // maths lines are never glued to their neighbours
+      cur = looksMathy(cur) || looksMathy(l.text) ? `${cur}\n${l.text}` : `${cur} ${l.text}`;
+    } else {
+      flush();
+      cur = l.text;
+    }
+  });
+  flush();
+  // list items and headings sit directly under each other; paragraphs are separated by a blank line
+  return paras.join('\n\n').trim();
+}
+
+/** The text for a chosen layout. */
+export function renderFormat(
+  f: Pick<FormattedScan, 'plain' | 'paragraphs' | 'markdown'>,
+  mode: TextFormat,
+): string {
+  return mode === 'markdown' ? f.markdown : mode === 'paragraphs' ? f.paragraphs : f.plain;
+}
+
+export { GAP_MARK };

@@ -276,3 +276,14 @@ file is never modified). Measured in the exported PNG on a red product on green:
 - **AI Smart Select: NOT included, flag off** (`features.ts`). The candidate is MobileSAM (Apache-2.0; TinyViT image encoder plus a prompt decoder, roughly 40 MB of weights as the ONNX pair). I could not fetch any SAM-class ONNX model in this
   environment (Hugging Face returns 403 through the sandbox proxy, GitHub release/raw paths for the exporters 404/403), so I could verify neither its input/output names, nor its size, nor any timing, let alone speed on a mid-range phone,
   which is the bar. Bundling an unverified 40 MB model and a decoder wired from memory would break the rule not to claim what was not run. The rest of the editor does not need it: tap select, region, lasso, smart brush and clean-up suggestions cover the Dell-logo case.
+
+## Scan text layouts and symbols (post v0.2.0)
+- **Reversed: Markdown is no longer the default.** Scan output used to be Markdown only. It is now plain text by default, with three layouts the user can switch
+  after scanning: **Plain** (one line per recognised line), **Paragraphs** (wrapped prose joined, blank line between paragraphs, maths lines never glued together) and **Markdown**
+  (`##` headings, `-` bullets, for developers and note apps). All three are stored with the scan so the layout can be changed again when it is reopened. Saved file: `.txt` (`.md` when saved as Markdown).
+  Switching layout over edited text asks first. "Copy plain" only appears in Markdown layout; Copy and Share send exactly what is on screen.
+- **Bigger headings:** plain text cannot carry a font size, so there is an Edit / Preview toggle; the preview draws headings larger. Headings come from the scan's Markdown layout, matched line by line, so it still works after edits elsewhere.
+  A rich export (PDF or HTML with real heading sizes) would need a new native dependency (e.g. `expo-print`) and is not included.
+- **Symbols:** two real causes of lost symbols were fixed in our code: a leading `+`, `-`, `*` or `>` on a maths line was treated as a list marker and dropped. The recogniser itself (ML Kit, built for words) can skip thin
+  symbols such as `=`; that cannot be fixed in our code. Instead, on lines that look like maths, a wide gap between two words with no operator between them is marked `□` and the user is told how many spots are marked. **The app never guesses the symbol.**
+  A quick-insert symbol row (= ≠ ≈ + − × ÷ ± ^ / < > ≤ ≥ ( ) √ π ∞ ∑ ∫ ² ³ ° % →) is under the editor. A real formula reader needs a maths-capable model (not included).

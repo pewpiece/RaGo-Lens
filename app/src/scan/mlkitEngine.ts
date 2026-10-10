@@ -10,7 +10,15 @@ export interface MlKitFrame {
 }
 export interface MlKitResult {
   text: string;
-  blocks: { text: string; frame?: MlKitFrame; lines: { text: string; frame?: MlKitFrame }[] }[];
+  blocks: {
+    text: string;
+    frame?: MlKitFrame;
+    lines: {
+      text: string;
+      frame?: MlKitFrame;
+      elements?: { text: string; frame?: MlKitFrame }[];
+    }[];
+  }[];
 }
 export interface MlKitModule {
   recognize(uri: string, script?: string): Promise<MlKitResult>;
@@ -27,7 +35,11 @@ export function mapMlKitResult(r: MlKitResult): OcrResult {
   const blocks: OcrBlock[] = (r.blocks ?? []).map((b) => ({
     text: b.text,
     frame: frameOf(b.frame),
-    lines: (b.lines ?? []).map((l) => ({ text: l.text, frame: frameOf(l.frame) })),
+    lines: (b.lines ?? []).map((l) => ({
+      text: l.text,
+      frame: frameOf(l.frame),
+      elements: (l.elements ?? []).map((e) => ({ text: e.text, frame: frameOf(e.frame) })),
+    })),
   }));
   return { text: r.text ?? '', blocks };
 }
