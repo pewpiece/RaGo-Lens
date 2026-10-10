@@ -1,6 +1,8 @@
 import {
   BlurMask,
+  FilterMode,
   Group,
+  MipmapMode,
   Image as SkiaImage,
   Paint,
   Path,
@@ -9,6 +11,9 @@ import {
   type SkPath,
 } from '@shopify/react-native-skia';
 import { softnessBlur, type Stroke } from './strokes';
+
+/** Mip-mapped sampling: a 12 MP photo drawn at a few hundred pixels is filtered, not point-sampled. */
+const SAMPLING = { filter: FilterMode.Linear, mipmap: MipmapMode.Linear } as const;
 
 const pathCache = new WeakMap<Stroke, SkPath>();
 
@@ -40,7 +45,7 @@ export interface MaskTreeProps {
 export function MaskTree({ maskLayer, strokes, width, height }: MaskTreeProps) {
   return (
     <>
-      <SkiaImage image={maskLayer} x={0} y={0} width={width} height={height} />
+      <SkiaImage image={maskLayer} x={0} y={0} width={width} height={height} sampling={SAMPLING} />
       {strokes.map((s) => (
         <Path
           key={s.id}
@@ -89,9 +94,17 @@ export function CutoutTree({
 }: CutoutTreeProps) {
   return (
     <Group layer>
-      <SkiaImage image={original} x={0} y={0} width={width} height={height} />
+      <SkiaImage image={original} x={0} y={0} width={width} height={height} sampling={SAMPLING} />
       {patches?.map((p, i) => (
-        <SkiaImage key={i} image={p.image} x={p.x} y={p.y} width={p.w} height={p.h} />
+        <SkiaImage
+          key={i}
+          image={p.image}
+          x={p.x}
+          y={p.y}
+          width={p.w}
+          height={p.h}
+          sampling={SAMPLING}
+        />
       ))}
       <Group layer={<Paint blendMode="dstIn" />}>
         <MaskTree maskLayer={maskLayer} strokes={strokes} width={width} height={height} />

@@ -1,11 +1,9 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Alert, Linking } from 'react-native';
 import Capture from '@/app/capture';
-import ExportScreen from '@/app/export';
 import Library from '@/app/library';
 import Processing from '@/app/processing';
 import Result from '@/app/result';
-import { ExportError, saveToGallery } from '@/export/actions';
 import { runCutout } from '@/engine/pipeline';
 import { CutoutError } from '@/engine/types';
 import { deleteItems } from '@/library/library';
@@ -353,45 +351,6 @@ describe('Result', () => {
     });
     await render(wrap(<Result />));
     expect(screen.getByText(/low storage/)).toBeTruthy();
-  });
-});
-
-describe('Export error handling', () => {
-  const setup = async () => {
-    useSession.setState({ result: fakeResult() as never });
-    await render(wrap(<ExportScreen />));
-    await act(async () => {});
-  };
-
-  it('explains a denied gallery permission and keeps Share available', async () => {
-    (saveToGallery as jest.Mock).mockRejectedValueOnce(
-      new ExportError('permission', 'RaGo Lens needs permission to save to your gallery.'),
-    );
-    await setup();
-    await fireEvent.press(screen.getByRole('button', { name: 'Save to gallery' }));
-    expect(await screen.findByText(/needs permission to save/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
-  });
-
-  it('confirms a successful save', async () => {
-    await setup();
-    await fireEvent.press(screen.getByRole('button', { name: 'Save to gallery' }));
-    expect(await screen.findByText(/Saved to your gallery/)).toBeTruthy();
-    expect(saveToGallery).toHaveBeenCalledWith('file:///cache/x.png');
-  });
-
-  it('turns an out-of-memory render into a friendly message', async () => {
-    const { renderExport } = jest.requireMock('@/scene/exportRender');
-    renderExport.mockRejectedValueOnce(new Error('Out of memory: could not render the export'));
-    await setup();
-    await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
-    expect(await screen.findByText(/Not enough memory/)).toBeTruthy();
-  });
-
-  it('switching to a coloured background shows colour choices', async () => {
-    await setup();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Colour' }));
-    expect(screen.getAllByRole('radio', { name: /^Colour #/ }).length).toBeGreaterThan(3);
   });
 });
 

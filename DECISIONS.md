@@ -228,3 +228,23 @@ error 0.50 -> 0.04 with a sufficient band, and only 0.60 -> 0.39 with a band tha
 Colour decontamination for the final mask replaces edge colours with the estimated true foreground colour (`decontaminationPatches`: opaque tile patches drawn over the photo before the mask is applied; the photo
 file is never modified). Measured in the exported PNG on a red product on green: edge green excess 90 -> 2 (255 scale). Settings (softness / shift / smooth / fine detail / clean edge colours) are stored in
 `edit_state_json` and applied at export; the Edge tool previews them. Per-pixel JS loops run only over the edge band (matting, decontamination); shift / smooth / soften are Skia image filters. No speed claim is made for a phone.
+
+## M7-M9: compose, shadow, backgrounds, presets, readiness
+- **Premultiplied resampling.** The cut-out is built once at photo resolution (`compose/cutout.tsx`: photo x mask, plus decontaminated edge patches, cropped to the product's tight bounds)
+  into one premultiplied RGBA image; rotation, flip, scaling, shadow and reflection resample *that*. Resampling photo and mask separately mixed the replaced background's colour into rotated edges
+  (measured: edge red 185/255 instead of 220); with the premultiplied cut-out the 30 degree rotation test keeps edge colours at the product red (test: no dark or light fringe).
+- **Canvas model** (`compose/layout.ts`): `Original` = the product's own pixels 1:1 plus padding (never enlarged, never downscaled); fixed shapes / custom sizes fit the product at the preset's target fill
+  ratio times the user's scale. Position, rotation (snaps to 0 / 90 / 180 / 270 within 3 degrees), flip, scale and nudge are stored as fractions in the edit state and applied at export, so everything is non-destructive.
+  Gestures on the preview: one finger moves (sticks to the centre lines with guides), two fingers pinch, twist and pan.
+- **Shadows and reflection** are drawn from the product's own alpha: contact (blurred ellipse under the base), drop (Skia drop-shadow filter), natural (both), plus an optional faded floor reflection. On a transparent canvas they end up as
+  semi-transparent dark pixels in the PNG's alpha channel (tested); on white / colour / gradient backgrounds they show as expected (tested).
+- **Gradients are drawn from a ramp image, not a gradient shader.** CanvasKit in the Node test environment rejects RN-Skia's gradient colour arrays, and an untestable path is not acceptable here; a 256-step ramp image drawn stretched is exact, renders
+  identically everywhere and is covered by pixel tests. (Found along the way: RN-Skia's `<Image>` defaults to `fit="contain"`, which silently letterboxes a non-square strip; the code now sets `fit="fill"`.)
+- **Output formats.** PNG always keeps alpha when the background is transparent (the written file is decoded and checked, see M0). JPEG presets force an opaque background (white) and lower the quality step by step to fit a size limit
+  (floor 40); if the limit still cannot be met the export says so instead of silently shrinking the picture.
+- **Presets** (`presets/`): plain data in the `presets` table, seeded from `presets/seed.json` the first time (square white 2000x2000 JPEG, portrait 4:5 on white, transparent PNG at original size), fully editable, duplicable, deletable.
+  The README and the editor say these values are starting points: platform rules differ and change, no platform claim is hard-coded.
+- **Readiness checker** (`readiness/checks.ts`, `analyze.tsx`): background purity (border pixels vs. the preset colour), fill ratio, centring and margins (edge contact is a failure), resolution vs. preset and photo enlargement, sharpness
+  (variance of the Laplacian over product pixels, not judged for flat colours), exposure clipping, leftover specks / attached pieces, unfilled holes (from the clean-up analysis of the final mask), transparency / opaque background, file size.
+  Fixes are one tap where a fix exists ("Centre and scale to 85 %", "Use PNG") or open the editor. Thresholds are starting points calibrated on synthetic images only (sharp checker 102400 vs. smooth gradient 2.3 variance), **not tuned on real photos**.
+- **Consistent framing for a set** (`compose/framing.ts`): the same fill ratio, horizontal centre and baseline for every product (tested with a wide item, a tall bottle and a rotated square).

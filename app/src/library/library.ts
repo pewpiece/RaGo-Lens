@@ -39,6 +39,15 @@ export function newId(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function getItem(id: string): ResultRow | undefined {
+  return repo.getResult(db(), id);
+}
+
+/** Persists the non-destructive edit state (transform, shadow, background, canvas, preset, refinement) of an item. */
+export function saveEditState(id: string, json: string): void {
+  repo.updateResultFiles(db(), id, { editStateJson: json });
+}
+
 export function listItems(limit?: number): ResultRow[] {
   return repo.listResults(db(), limit);
 }

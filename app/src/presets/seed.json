@@ -1,0 +1,41 @@
+[
+  {
+    "id": "square-white-2000",
+    "name": "Square, pure white 2000x2000",
+    "json": {
+      "canvas": { "aspect": "1:1", "width": 2000, "height": 2000, "paddingPercent": 4 },
+      "background": { "kind": "color", "color": "#FFFFFF" },
+      "fill": { "min": 0.75, "max": 0.95, "target": 0.85 },
+      "shadow": "natural",
+      "format": "jpeg",
+      "jpegQuality": 92,
+      "maxFileKB": null
+    }
+  },
+  {
+    "id": "portrait-4x5",
+    "name": "Portrait 4:5 on white",
+    "json": {
+      "canvas": { "aspect": "4:5", "width": 1600, "height": 2000, "paddingPercent": 5 },
+      "background": { "kind": "color", "color": "#FFFFFF" },
+      "fill": { "min": 0.7, "max": 0.9, "target": 0.8 },
+      "shadow": "contact",
+      "format": "jpeg",
+      "jpegQuality": 90,
+      "maxFileKB": null
+    }
+  },
+  {
+    "id": "transparent-png",
+    "name": "Transparent PNG, original size",
+    "json": {
+      "canvas": { "aspect": "original", "width": 2000, "height": 2000, "paddingPercent": 4 },
+      "background": { "kind": "transparent" },
+      "fill": { "min": 0.05, "max": 1, "target": 0.9 },
+      "shadow": "none",
+      "format": "png",
+      "jpegQuality": 92,
+      "maxFileKB": null
+    }
+  }
+]
