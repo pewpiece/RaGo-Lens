@@ -2,7 +2,7 @@ import type { SkImage } from '@shopify/react-native-skia';
 import { maskBoundsExact } from './postprocess';
 import type { PreparedPhoto } from './imagePrep';
 import { DEFAULT_EDGE, edgeRamp, type EdgeLevel } from './edge';
-import { encodePng, maskLayerFromAlpha, tightenMask } from './skiaOps';
+import { encodePng, maskLayerFromAlpha, tightenMask, toAlpha8 } from './skiaOps';
 import { throwIfAborted, toCutoutError, type ImageEngine } from './types';
 
 export interface PipelineDeps {
@@ -70,10 +70,13 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
     const original = await deps.loadImage(prepared.uri);
     throwIfAborted(signal);
     const { lo, hi } = edgeRamp(edge);
-    const maskLayer = tightenMask(
-      maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height),
-      lo,
-      hi,
+    // upscale to the photo size, pull the edge in, then keep it as a compact 1-byte-per-pixel mask
+    const maskLayer = toAlpha8(
+      tightenMask(
+        maskLayerFromAlpha(mask.alpha, mask.width, mask.height, prepared.width, prepared.height),
+        lo,
+        hi,
+      ),
     );
     throwIfAborted(signal);
 

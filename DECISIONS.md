@@ -181,3 +181,16 @@ A black watch on a dark laptop gave a bad cut-out, an RGB export, a 328 px file 
   say so, which will point at the exact stage.
 - Mask storage: an Alpha_8 image encodes to an 8-bit grey+alpha PNG and decodes with alpha intact (probed on CanvasKit), so masks can be stored compactly.
   CanvasKit cannot `readPixels` into Alpha_8, so pixel reads go through RGBA in small tiles.
+
+## M1: data model
+- **Mask = 8-bit coverage at photo resolution**, held as 512x512 tiles (`mask/tiledMask.ts`). A tile that is one value is stored as a single number, so
+  an empty 4000x3000 mask costs nothing and a typical one a few MB. The mask file (`results.mask_uri`) is an Alpha_8 image encoded by Skia as an 8-bit
+  grey+alpha PNG; opening it reads each tile back (`mask/maskImage.ts`), never a whole-image RGBA copy in JS.
+- **Undo/redo = per-tile diffs** (`mask/history.ts`): each step stores RLE-compressed before/after bytes of only the tiles it changed (50 steps, oldest dropped).
+  Tested: 60 random edits, exact mask equality after every undo and redo; a 60x60 dab on a 12 MP mask costs under 4 KB of history. History lives in an
+  in-memory registry keyed by item (added with the editor), so it survives leaving and re-entering the editor within a session, not an app restart.
+- **DB v2** (`db/migrations.ts`): `results` gains `mask_uri`, `original_width/height`, `edit_state_json`, `status`; new `batches`, `batch_items`, `presets`.
+  Existing rows are back-filled (mask uri from `settings_json`, photo size = old size). Tested against real SQLite (sql.js) from a v1 database.
+- **Edit state** (`edit/editState.ts`): transform, shadow, background, canvas, preset id, refinement settings and a mask revision as defensively-parsed JSON;
+  the export is always rendered from original + mask + this state.
+- Pipeline now keeps the mask as an Alpha_8 image (1 byte/pixel) at photo size.

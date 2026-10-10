@@ -55,6 +55,11 @@ export interface NewItem {
   maskUri?: string;
   width: number;
   height: number;
+  /** Photo size when it differs from the result size (it does not for cut-outs: both are full resolution). */
+  originalWidth?: number;
+  originalHeight?: number;
+  editStateJson?: string;
+  status?: 'ready' | 'needs_review';
   settings: Record<string, unknown>;
 }
 
@@ -89,6 +94,11 @@ export function saveItem(item: NewItem): ResultRow {
     height: item.height,
     settingsJson: JSON.stringify(item.settings),
     createdAt: Date.now(),
+    maskUri: null,
+    originalWidth: item.originalWidth ?? item.width,
+    originalHeight: item.originalHeight ?? item.height,
+    editStateJson: item.editStateJson ?? '{}',
+    status: item.status ?? 'ready',
   };
   try {
     row.originalUri = moveInto(dir, item.originalUri, `${id}-original.jpg`, true);
@@ -96,6 +106,7 @@ export function saveItem(item: NewItem): ResultRow {
     row.thumbUri = moveInto(dir, item.thumbUri, `${id}-thumb.${extOf(item.thumbUri, 'png')}`);
     if (item.maskUri) {
       const maskUri = moveInto(dir, item.maskUri, `${id}-mask.png`);
+      row.maskUri = maskUri;
       row.settingsJson = JSON.stringify({ ...item.settings, maskUri }); // set early so cleanup can find it
     }
     repo.insertResult(db(), row);
@@ -110,7 +121,13 @@ export function saveItem(item: NewItem): ResultRow {
 /** Replace the stored result/thumb of an existing item (e.g. after a refine). */
 export function replaceItemImages(
   id: string,
-  files: { resultUri: string; thumbUri: string; maskUri: string },
+  files: {
+    resultUri: string;
+    thumbUri: string;
+    maskUri: string;
+    editStateJson?: string;
+    status?: 'ready' | 'needs_review';
+  },
 ): ResultRow | undefined {
   const row = repo.getResult(db(), id);
   if (!row) return undefined;
@@ -122,11 +139,14 @@ export function replaceItemImages(
   const old = parseSettings(row.settingsJson);
   safeDelete(row.resultUri);
   safeDelete(row.thumbUri);
-  safeDelete(typeof old.maskUri === 'string' ? old.maskUri : '');
+  safeDelete(maskUriOf(row) ?? '');
   repo.updateResultFiles(db(), id, {
     resultUri: resultNew,
     thumbUri: thumbNew,
+    maskUri: maskNew,
     settingsJson: JSON.stringify({ ...old, maskUri: maskNew }),
+    ...(files.editStateJson ? { editStateJson: files.editStateJson } : {}),
+    ...(files.status ? { status: files.status } : {}),
   });
   return repo.getResult(db(), id);
 }
@@ -140,7 +160,10 @@ export function parseSettings(json: string): Record<string, unknown> {
   }
 }
 
-export const maskUriOf = (row: Pick<ResultRow, 'settingsJson'>): string | null => {
+export const maskUriOf = (
+  row: Pick<ResultRow, 'settingsJson'> & { maskUri?: string | null },
+): string | null => {
+  if (row.maskUri) return row.maskUri;
   const m = parseSettings(row.settingsJson).maskUri;
   return typeof m === 'string' && m ? m : null;
 };

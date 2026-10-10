@@ -56,7 +56,7 @@ describe('migrations', () => {
     runMigrations(adapter, extra);
     expect(
       adapter.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version,
-    ).toBe(2);
+    ).toBe(MIGRATIONS.length + 1);
     expect(raw.exec('SELECT value FROM settings')[0]!.values[0]![0]).toBe('1');
   });
 
@@ -114,5 +114,26 @@ describe('key/value storage', () => {
     expect(await kv.get('a')).toBe('1');
     await kv.set('a', '2');
     expect(await kv.get('a')).toBe('2');
+  });
+});
+
+describe('v2 migration (Phase 1.5)', () => {
+  it('upgrades a v1 library: mask uri and photo size are back-filled, new tables exist', async () => {
+    const { adapter, raw, db } = await makeDb();
+    runMigrations(adapter, MIGRATIONS.slice(0, 1));
+    raw.run(
+      `INSERT INTO results (id, mode, original_uri, result_uri, thumb_uri, width, height, settings_json, created_at)
+       VALUES ('old1','cutout','o','r','t',640,480,'{"maskUri":"file:///m.png","engine":"onnx"}',5)`,
+    );
+    runMigrations(adapter);
+    const r = repo.getResult(db, 'old1')!;
+    expect(r.maskUri).toBe('file:///m.png');
+    expect([r.originalWidth, r.originalHeight]).toEqual([640, 480]);
+    expect(r.status).toBe('ready');
+    expect(r.editStateJson).toBe('{}');
+    const tables = raw
+      .exec("SELECT name FROM sqlite_master WHERE type='table'")[0]!
+      .values.flat();
+    expect(tables).toEqual(expect.arrayContaining(['batches', 'batch_items', 'presets']));
   });
 });

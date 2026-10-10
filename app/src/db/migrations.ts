@@ -20,6 +20,45 @@ export const MIGRATIONS: readonly string[] = [
      key TEXT PRIMARY KEY NOT NULL,
      value TEXT NOT NULL
    );`,
+  // v2 (Phase 1.5): full-resolution mask + edit state on results, batch queue, user presets.
+  // Existing cut-outs keep working: mask_uri is back-filled from settings_json and the photo size is the old size.
+  `ALTER TABLE results ADD COLUMN mask_uri TEXT;
+   ALTER TABLE results ADD COLUMN original_width INTEGER;
+   ALTER TABLE results ADD COLUMN original_height INTEGER;
+   ALTER TABLE results ADD COLUMN edit_state_json TEXT NOT NULL DEFAULT '{}';
+   ALTER TABLE results ADD COLUMN status TEXT NOT NULL DEFAULT 'ready';
+   UPDATE results SET original_width = width, original_height = height,
+     mask_uri = json_extract(settings_json, '$.maskUri');
+   CREATE TABLE IF NOT EXISTS batches (
+     id TEXT PRIMARY KEY NOT NULL,
+     name TEXT NOT NULL,
+     preset_id TEXT,
+     status TEXT NOT NULL DEFAULT 'queued',
+     options_json TEXT NOT NULL DEFAULT '{}',
+     created_at INTEGER NOT NULL
+   );
+   CREATE TABLE IF NOT EXISTS batch_items (
+     id TEXT PRIMARY KEY NOT NULL,
+     batch_id TEXT NOT NULL,
+     position INTEGER NOT NULL,
+     source_uri TEXT NOT NULL,
+     name TEXT NOT NULL DEFAULT '',
+     sku TEXT NOT NULL DEFAULT '',
+     status TEXT NOT NULL DEFAULT 'queued',
+     result_id TEXT,
+     error TEXT,
+     updated_at INTEGER NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS batch_items_batch_idx ON batch_items (batch_id, position);
+   CREATE TABLE IF NOT EXISTS presets (
+     id TEXT PRIMARY KEY NOT NULL,
+     name TEXT NOT NULL,
+     json TEXT NOT NULL,
+     builtin INTEGER NOT NULL DEFAULT 0,
+     position INTEGER NOT NULL DEFAULT 0,
+     created_at INTEGER NOT NULL,
+     updated_at INTEGER NOT NULL
+   );`,
 ];
 
 /** The minimal slice of the expo-sqlite API the migration runner needs. */

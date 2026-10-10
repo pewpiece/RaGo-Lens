@@ -19,7 +19,19 @@ export function getResult(db: SyncDb, id: string): ResultRow | undefined {
 export function updateResultFiles(
   db: SyncDb,
   id: string,
-  patch: Partial<Pick<ResultRow, 'resultUri' | 'thumbUri' | 'settingsJson'>>,
+  patch: Partial<
+    Pick<
+      ResultRow,
+      | 'resultUri'
+      | 'thumbUri'
+      | 'settingsJson'
+      | 'maskUri'
+      | 'editStateJson'
+      | 'status'
+      | 'originalWidth'
+      | 'originalHeight'
+    >
+  >,
 ): void {
   db.update(results).set(patch).where(eq(results.id, id)).run();
 }
