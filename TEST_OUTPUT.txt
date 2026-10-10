@@ -322,3 +322,31 @@ wrote /tmp/claude-0/scratch/car-cutout.png (480x360, RGBA)
 input=input.1 outputs=7 firstOutputDims=[1,1,320,320] (desktop WASM: 1159 ms)
 foreground fraction=24.2% bounds={"left":21,"top":82,"right":294,"bottom":277}
 wrote /tmp/claude-0/scratch/animal-cutout.png (1000x667, RGBA)
+
+================ Phase 1.5 (pro cut-out workflow), captured 2026-10-10T04:29:58Z in the Linux sandbox ================
+--- npx tsc --noEmit: exit 0
+--- npx eslint . --max-warnings 0: exit 0
+--- npx jest (summary lines)
+Test Suites: 54 passed, 54 total
+Tests:       446 passed, 446 total
+Snapshots:   0 total
+
+--- 12 MP profile (src/__tests__/perf.test.tsx): Node 22 + CanvasKit CPU in the sandbox. NOT phone numbers.
+    build photo + mask bytes (test setup)             7877 ms   rss 266 MB
+    photo as a Skia image                               47 ms   rss 312 MB
+    TiledMask.fromFlat                                 101 ms   rss 309 MB
+    maskTightBounds (exact, full resolution)            54 ms   rss 312 MB
+    open EditorDoc (pyramid object, tiles)               1 ms   rss 312 MB
+    analysis copy (1024 px) + Lab                     1412 ms   rss 356 MB
+    wand tap (1 MP flood fill) + upsample + snap      5369 ms   rss 568 MB
+    Remove selection (tile composite)                 1545 ms   rss 619 MB
+    Undo                                                35 ms   rss 619 MB
+    brush stroke 600 px long (tile composite)          278 ms   rss 632 MB
+    undo history after 21 strokes: 15 steps, 2608 KB compressed
+    clean-up suggestions (analysis copy)              2964 ms   rss 792 MB
+    refineMask: matting over the whole mask           3004 ms   rss 793 MB
+    refineMask + shift/smooth/soften                  4802 ms   rss 811 MB
+    decontamination patches                           2895 ms   rss 826 MB
+    build premultiplied cut-out                       2386 ms   rss 893 MB
+    render + encode PNG (original canvas)             1073 ms   rss 957 MB
+    render 2000x2000 white JPEG with natural shadow    1803 ms   rss 1035 MB

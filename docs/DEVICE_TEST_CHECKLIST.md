@@ -1,7 +1,7 @@
 # Manual device test checklist
 
 Run this on a real Android phone with the APK from a GitHub Release. Tick each line and note anything odd
-(speed, memory, quality). Take screenshots of failures. **Nothing here has been run yet.**
+(speed, memory, quality). Take screenshots of failures. **Nothing here has been run yet** (sections 1 to 8 are phase 1, section 9 is the phase 1.5 pro workflow).
 
 ## 0. Install
 - [ ] Install the APK (allow "install unknown apps"). App name "RaGo Lens", your logo as icon, dark splash.
@@ -53,6 +53,22 @@ For each: note time from shutter to result (stopwatch) and rate the cut-out 1 to
 - [ ] Press Cancel while processing: returns without a result. Press back during processing: same.
 - [ ] Mid-process, send the app to the background and return: no crash.
 - [ ] Settings > Developer > mock engine: the cut-out becomes a centre ellipse (UI works without the model); turn it off again.
+
+## 9. Pro cut-out workflow (phase 1.5), real-world cases
+Mark each: result ___ /5, time ___ s, notes.
+- [ ] **Your black watch on a dark laptop with the logo visible**: drop the same photo in `app/test/fixtures/real/` too (see its README). Wand the logo, accept/ignore the suggestion, refine; strap holes cut out; export PNG.
+- [ ] **Mug with handle**: the gap inside the handle is transparent.
+- [ ] **Chain / mesh**: gaps between links; note what Smart brush and Refine can and cannot do.
+- [ ] **Glass bottle**: expected to be hard; note the best you could get.
+- [ ] **Shiny phone screen**: reflections do not punch holes.
+- [ ] **White object on white**: edges still follow the object (use Edge tool).
+- [ ] **12 MP gallery photo**: open in editor, wand, brush, undo, export. Note lag and any crash.
+- [ ] **Airplane mode** for the whole editor + export + batch flow.
+- [ ] **Rotate and export at original resolution**: the exported PNG pixel size equals the photo's (plus padding if set). Check size in a file manager.
+- [ ] **Open the exported PNG on white elsewhere** (a doc or web page with a white page): no dark halo, no box, transparent areas really transparent.
+- [ ] Batch: pick 5 photos, force-close the app halfway, reopen: the queue resumes.
+- [ ] Capture: level hint, light hint, framing grid, post-shot quality tips; deny sensors/camera gracefully.
+- [ ] TalkBack on: Home, Editor tools, Export tabs are navigable.
 
 ## Report back
 Phone, Android version, times, quality scores, and any crash or blank screen (with what you did just before).

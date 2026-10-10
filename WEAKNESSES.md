@@ -55,11 +55,10 @@ Written honestly: **I could not build or run this app on an Android device or em
 ## Product limits (by design or time)
 - Android only (min SDK 26). iOS is not configured (share extension disabled).
 - Library has no search/sort/pagination (loads all rows). Single-item delete is via multi-select (long press).
-- Input photos are re-encoded to JPEG for processing, so a PNG with transparency is flattened before cut-out. Very large photos (50 MP+) depend on how
-  `expo-image-manipulator` decodes them; not tested.
+- Very large photos: the original is kept (never silently shrunk) up to 24 MP; above that the app downsizes with an explicit warning. Decoding of 50 MP+ files is untested.
 - Accessibility labels/roles are set, but TalkBack was never run.
 - "Retry with different settings" only offers the working-size cap (the engine choice is a Settings developer toggle).
-- Output size "original" means the working-size image (<= cap, default 2048), not necessarily the camera's full 12 MP.
+- Export "original" now means the photo's own resolution (phase 1.5). The Library thumbnail is <= 320 px by design.
 - The release APK declares the `INTERNET` permission (React Native default) although the app never uses the network;
   `RAGO_BLOCK_INTERNET=1` strips it but that variant is untested on a device.
 - Model provenance caveat (see DECISIONS.md): the ONNX file is rembg's re-export of U²-Net-P; verified by hash, I/O and behaviour, not byte-matched to the upstream PyTorch weights.
@@ -72,3 +71,29 @@ ONNX engine tests with a fake runtime, cancellation/error paths, theme/settings 
 
 - Edge tightening presets (Normal/Tight) are untested on device and tuned only on synthetic masks; they may eat fine detail (fur, thin straps) on some photos. Soft restores the old behaviour.
 - Lasso is manual. There is no automatic "remove this logo" and no inpainting: removed areas become transparent, not filled in.
+
+## Phase 1.5 (pro cut-out workflow): what is NOT verified
+Everything below was built and tested in a sandbox (Node + CanvasKit CPU raster, jest). **None of it has run on a phone.**
+- **Never run on a device**: the whole editor (wand, lasso, polygon, shapes, brushes, loupe, edge/orientation tools), compose/export screen,
+  batch queue, capture overlays, presets. Gestures (`PanResponder`), multi-touch, feel and layout are asserted structurally only.
+  The Skia GPU path may differ from the CPU raster used in tests.
+- **Performance on a phone is unknown.** The 12 MP profile in `TEST_OUTPUT.txt` is Node/CanvasKit on the build machine
+  (wand on a big selection ~5.4 s, matting over a whole mask ~3 s, cut-out build ~2.4 s, PNG export ~1 s, RSS ~1 GB). Expect phones to be slower;
+  24 MP memory was not measured and may be killed by Android on low-RAM devices.
+- **Big-selection wand cost**: a wand tap that selects most of a 12 MP photo takes ~5 s (upsample + edge snap). Logo-sized selections are faster but not profiled.
+- **Deviation from "no JS pixel loops"**: shift / smooth / soften / selection grow-shrink-feather and matting run as JS loops over one tile region at a time, because
+  Skia's CPU morphology took 1.2 to 3.9 s per tile in CanvasKit and the blur ~140 ms. Reasoning is in DECISIONS.md. Untested on Hermes; JS speed on a phone is unknown.
+- **Undo history is not kept across app restarts**, and rotating the photo clears it. History is capped at 50 steps.
+- **Clean-up suggestions are heuristics** (specks, blobs, holes, pin-holes). Never auto-applied; they will miss things and flag false positives.
+- **Matting/decontamination** works best with a colour difference between object and background. Dark-on-dark, glass, chains and mesh stay hard; test them (checklist).
+- **Readiness checks and thresholds** (blur, exposure, edge halo, marketplace presets) were tuned on synthetic images only. Marketplace rules change; presets are editable data and may be out of date.
+- **Capture guidance**: level/light sensors via `expo-sensors` are untested on hardware; tap-to-focus is best effort; there is no live "dark centre" hint and no stylus hover support.
+  Auto exposure / white balance is a suggestion shown before applying.
+- **Batch**: queue is persisted and resumable (tested with a fake clock), but background execution while the app is killed is not implemented. "Share as set" is one share per file.
+- **HD engine (LAN)**: off by default, LAN addresses only, silent fallback to the on-device model. Never tested against a real server; the endpoint spec is `docs/GOLESYNC_SEGMENT_ENDPOINT.md`.
+  Enabling it requires `usesCleartextTraffic` in the manifest, which lets the app speak plain HTTP to any host if code were changed; only `remoteEngine.ts` is allowed to touch the network (test-enforced).
+- **Smart Select** (tap-to-segment model) is not included; `FEATURES.smartSelect` is false.
+- **TalkBack was never run.** A test checks that every interactive element has a label/role, which is not the same as a good screen-reader experience.
+- The mask PNG decode needs a transient RGBA copy of the mask (Alpha_8 cannot be read directly in CanvasKit), a short memory spike on big photos.
+- JPEG export always has an opaque background by definition; the transparency guarantee applies to PNG/WebP only. Whether the receiving app keeps the alpha is up to that app.
+- The original failure (black watch on a dark laptop with logo) could not be reproduced as an alpha-flattening bug in code; see DECISIONS.md M0. Whether the real photo now cuts out well is **unverified until you add it** under `app/test/fixtures/real/`.

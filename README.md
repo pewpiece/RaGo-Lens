@@ -19,6 +19,14 @@ optional Refine brush (erase/restore, size, softness, zoom/pan, undo/redo, non-d
 (transparent / white / colour / soft shadow, auto-crop, 2048 / 1024 / original) -> save to gallery, share or copy. Results live in a private
 Library (SQLite + app storage). Themes: System / Light / Dark.
 
+## Pro cut-out workflow (phase 1.5)
+- **Editor** on the full-resolution photo: magic wand, lasso, polygon, rectangle, ellipse, select-by-colour, erase/restore/smart brushes, hold-to-compare, loupe, undo (50 steps).
+- **Clean-up suggestions** (logo, specks, holes) are shown and applied only when you accept them.
+- **Refine**: matting + colour decontamination, shift, smooth, soften, fine detail.
+- **Compose and export**: move/rotate/flip, canvas size and padding, shadows and reflection, solid/gradient backgrounds, marketplace presets, readiness checks, PNG/WebP with true transparency or JPEG on a background. Exports are never silently downscaled.
+- **Batch** queue (resumable), **capture guidance** (level, light, framing), optional auto exposure and white balance, optional **LAN HD engine** (off by default).
+- Still fully offline; the only network code is the optional LAN engine. Marketplace presets are data and can go out of date; check the platform's current rules.
+
 ## Repo layout
 ```
 app/                 Expo project (routes in app/src/app, code in app/src)
