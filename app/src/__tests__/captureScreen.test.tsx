@@ -23,7 +23,10 @@ jest.mock('expo-camera', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
-    CameraView: React.forwardRef((props: { autofocus?: string }, ref: React.Ref<unknown>) => {
+    CameraView: React.forwardRef(function MockCameraView(
+      props: { autofocus?: string },
+      ref: React.Ref<unknown>,
+    ) {
       React.useImperativeHandle(ref, () => ({
         takePictureAsync: async () => ({ uri: 'file:///shot.jpg' }),
       }));
