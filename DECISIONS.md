@@ -248,3 +248,12 @@ file is never modified). Measured in the exported PNG on a red product on green:
   (variance of the Laplacian over product pixels, not judged for flat colours), exposure clipping, leftover specks / attached pieces, unfilled holes (from the clean-up analysis of the final mask), transparency / opaque background, file size.
   Fixes are one tap where a fix exists ("Centre and scale to 85 %", "Use PNG") or open the editor. Thresholds are starting points calibrated on synthetic images only (sharp checker 102400 vs. smooth gradient 2.3 variance), **not tuned on real photos**.
 - **Consistent framing for a set** (`compose/framing.ts`): the same fill ratio, horizontal centre and baseline for every product (tested with a wide item, a tall bottle and a rotated square).
+
+## M10: batch mode
+- A batch is rows in `batches` / `batch_items` (up to 50 photos). `BatchRunner` (`batch/queue.ts`) writes every state change (queued, processing, done, needs_review, failed) to SQLite *before* moving on, processes one or two photos at a time
+  (two is the cap: memory, not speed, is the limit), supports cancel (the interrupted photo goes back to the queue), retry, and resume. Tested with a simulated app kill: a runner whose process never settles is abandoned, a new runner on the same
+  database re-queues the item left "processing" and finishes the batch. The state shown (running / paused / done / needs review / failed) is derived from the items, never stored separately.
+- One photo (`batch/process.ts`): cut out -> save to the library -> run the clean-up analysis -> apply the preset and the batch framing (same fill ratio, centre or shared baseline) to its edit state. Anything found by the analysis, or "nothing detected", sets
+  `needs_review`; the cut-out itself is never changed by a finding. The review screen steps through only those (open in editor / looks fine / skip).
+- Export: file names from a template (`{name} {sku} {index} {preset}`, sanitised, unique, 80 char cap); destination is the gallery or a folder picked with the Android directory picker (`Directory.pickDirectoryAsync`). "Share as a set" is **one share sheet per file**:
+  sharing several files at once on Android needs a native module this app does not have (listed in WEAKNESSES.md).

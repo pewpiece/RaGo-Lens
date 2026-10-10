@@ -56,6 +56,7 @@ import {
 import { getItem, saveEditState } from '@/library/library';
 import { maskFromImage } from '@/mask/maskImage';
 import { parseEditState } from '@/edit/editState';
+import { applyPresetToEdit } from '@/presets/applyPreset';
 import { duplicatePreset, type Preset } from '@/presets/presets';
 import { loadPresets, newPresetId, removePreset, savePreset } from '@/presets/store';
 import { analyzeAndCheck, cleanupCounts } from '@/readiness/analyze';
@@ -257,25 +258,7 @@ export default function ExportScreen() {
   // ----- presets
   const applyPreset = (p: Preset | null) => {
     if (!p) return patch((e) => ({ ...e, presetId: null }));
-    patch((e) => {
-      const size =
-        p.canvas.aspect === 'original' || p.canvas.aspect === 'custom'
-          ? { w: p.canvas.width, h: p.canvas.height }
-          : { w: p.canvas.width, h: p.canvas.height };
-      return {
-        ...e,
-        presetId: p.id,
-        canvas: {
-          aspect: p.canvas.aspect,
-          width: size.w,
-          height: size.h,
-          paddingPercent: p.canvas.paddingPercent,
-        },
-        background: p.background,
-        shadow: { ...e.shadow, kind: p.shadow },
-        transform: { ...e.transform, scale: 1, cx: 0.5, cy: 0.5 },
-      };
-    });
+    patch((e) => applyPresetToEdit(e, p));
   };
   const savePresetAndRefresh = (p: Preset) => {
     savePreset(db(), p);

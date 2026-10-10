@@ -67,6 +67,26 @@ export default function Home() {
         })}
       </View>
 
+      <Card
+        testID="open-batch"
+        accessibilityLabel="Batch. Cut out up to 50 photos with one preset"
+        onPress={() => router.push('/batch' as never)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.lg,
+          marginTop: spacing.md,
+        }}
+      >
+        <View style={[s.glyph, { backgroundColor: tokens.surfaceRaised }]}>
+          <Text style={{ fontSize: 24, color: tokens.text }}>▦</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.cardTitle}>Batch</Text>
+          <Muted>Up to 50 photos, one preset, framed the same</Muted>
+        </View>
+      </Card>
+
       <View style={s.recentHeader}>
         <SectionTitle>Recent</SectionTitle>
         {items.length > 0 ? (

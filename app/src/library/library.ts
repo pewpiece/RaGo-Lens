@@ -43,6 +43,11 @@ export function getItem(id: string): ResultRow | undefined {
   return repo.getResult(db(), id);
 }
 
+/** 'ready' or 'needs_review' (batch review marks and clears this). */
+export function setItemStatus(id: string, status: 'ready' | 'needs_review'): void {
+  repo.updateResultFiles(db(), id, { status });
+}
+
 /** Persists the non-destructive edit state (transform, shadow, background, canvas, preset, refinement) of an item. */
 export function saveEditState(id: string, json: string): void {
   repo.updateResultFiles(db(), id, { editStateJson: json });

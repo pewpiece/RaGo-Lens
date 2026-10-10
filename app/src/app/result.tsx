@@ -60,8 +60,7 @@ export default function Result() {
       {!result.foundObject ? (
         <View style={{ marginBottom: spacing.md }}>
           <Banner>
-            No clear object was found. Try Edit to paint it in, or Retry with another photo or
-            size.
+            No clear object was found. Try Edit to paint it in, or Retry with another photo or size.
           </Banner>
         </View>
       ) : null}
