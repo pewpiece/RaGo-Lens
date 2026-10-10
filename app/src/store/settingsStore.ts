@@ -16,7 +16,38 @@ const KEYS = {
   scanEnhance: 'scan_enhance',
   edge: 'cutout_edge',
   editorView: 'editor_view_mode',
+  enhance: 'auto_enhance',
 } as const;
+
+export interface AutoEnhanceSettings {
+  enabled: boolean;
+  /** 0..1 */
+  strength: number;
+  /** Also apply it to the exported picture. */
+  exportToo: boolean;
+}
+
+export const DEFAULT_AUTO_ENHANCE: AutoEnhanceSettings = {
+  enabled: false,
+  strength: 0.6,
+  exportToo: false,
+};
+
+export function parseAutoEnhance(raw: string | null): AutoEnhanceSettings {
+  try {
+    const o = JSON.parse(raw ?? '{}') as Partial<AutoEnhanceSettings>;
+    return {
+      enabled: o.enabled === true,
+      strength:
+        typeof o.strength === 'number' && Number.isFinite(o.strength)
+          ? Math.min(1, Math.max(0, o.strength))
+          : 0.6,
+      exportToo: o.exportToo === true,
+    };
+  } catch {
+    return DEFAULT_AUTO_ENHANCE;
+  }
+}
 
 export interface SettingsState {
   hydrated: boolean;
@@ -33,6 +64,8 @@ export interface SettingsState {
   edgeLevel: EdgeLevel;
   /** Last view mode used in the editor (null = pick by product brightness). */
   editorViewMode: ViewMode | null;
+  /** Optional auto exposure / white balance before the cut-out. */
+  autoEnhance: AutoEnhanceSettings;
   hydrate(): Promise<void>;
   setExportDefaults(patch: Partial<ExportOptions>): Promise<void>;
   setWorkingSizeCap(px: number): Promise<void>;
@@ -41,6 +74,7 @@ export interface SettingsState {
   setScanEnhance(on: boolean): Promise<void>;
   setEdgeLevel(level: EdgeLevel): Promise<void>;
   setEditorViewMode(mode: ViewMode): Promise<void>;
+  setAutoEnhance(patch: Partial<AutoEnhanceSettings>): Promise<void>;
 }
 
 export function clampWorkingSize(px: number): number {
@@ -65,9 +99,10 @@ export function createSettingsStore(kv: KeyValueStorage) {
     scanEnhance: true,
     edgeLevel: DEFAULT_EDGE,
     editorViewMode: null,
+    autoEnhance: DEFAULT_AUTO_ENHANCE,
     async hydrate() {
       try {
-        const [exp, size, mock, script, enhance, edge, view] = await Promise.all([
+        const [exp, size, mock, script, enhance, edge, view, auto] = await Promise.all([
           kv.get(KEYS.exportDefaults),
           kv.get(KEYS.workingSize),
           kv.get(KEYS.mockEngine),
@@ -75,6 +110,7 @@ export function createSettingsStore(kv: KeyValueStorage) {
           kv.get(KEYS.scanEnhance),
           kv.get(KEYS.edge),
           kv.get(KEYS.editorView),
+          kv.get(KEYS.enhance),
         ]);
         set({
           exportDefaults: parseExportOptions(exp),
@@ -84,6 +120,7 @@ export function createSettingsStore(kv: KeyValueStorage) {
           scanEnhance: enhance !== '0',
           edgeLevel: parseEdgeLevel(edge),
           editorViewMode: isViewMode(view) ? view : null,
+          autoEnhance: parseAutoEnhance(auto),
           hydrated: true,
         });
       } catch {
@@ -99,6 +136,12 @@ export function createSettingsStore(kv: KeyValueStorage) {
       const v = clampWorkingSize(px);
       set({ workingSizeCap: v });
       await safeSet(KEYS.workingSize, String(v));
+    },
+    async setAutoEnhance(patch) {
+      const next = { ...get().autoEnhance, ...patch };
+      next.strength = Math.min(1, Math.max(0, next.strength));
+      set({ autoEnhance: next });
+      await safeSet(KEYS.enhance, JSON.stringify(next));
     },
     async setEditorViewMode(mode) {
       set({ editorViewMode: mode });

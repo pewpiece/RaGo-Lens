@@ -53,6 +53,14 @@ export interface RefineState {
   decontaminate: boolean;
 }
 
+export interface EnhanceState {
+  /** Auto exposure / white balance colour matrix (4x5, 20 numbers) computed when the photo was processed; null = none. */
+  matrix: number[] | null;
+  strength: number;
+  /** Also apply the matrix to the exported picture (it is always applied to the working copy the model saw). */
+  exportToo: boolean;
+}
+
 export interface EditState {
   version: 1;
   /** Bumped whenever the stored mask file is rewritten. */
@@ -63,6 +71,7 @@ export interface EditState {
   canvas: CanvasState;
   presetId: string | null;
   refine: RefineState;
+  enhance: EnhanceState;
 }
 
 export const DEFAULT_EDIT_STATE: EditState = {
@@ -83,6 +92,7 @@ export const DEFAULT_EDIT_STATE: EditState = {
   canvas: { aspect: 'original', width: 2000, height: 2000, paddingPercent: 4 },
   presetId: null,
   refine: { softness: 0, shift: 0, smooth: 0, fineDetail: false, decontaminate: true },
+  enhance: { matrix: null, strength: 0.6, exportToo: false },
 };
 
 const num = (v: unknown, d: number, min: number, max: number): number =>
@@ -107,6 +117,7 @@ export function parseEditState(raw: string | null | undefined): EditState {
   const b = obj(j.background);
   const c = obj(j.canvas);
   const r = obj(j.refine);
+  const en = obj(j.enhance);
   const kinds = ['none', 'contact', 'drop', 'natural'] as const;
   const aspects = ['original', '1:1', '4:5', '3:4', '16:9', '9:16', 'custom'] as const;
   const background: BackgroundState =
@@ -159,6 +170,16 @@ export function parseEditState(raw: string | null | undefined): EditState {
       smooth: num(r.smooth, 0, 0, 20),
       fineDetail: bool(r.fineDetail, false),
       decontaminate: bool(r.decontaminate, true),
+    },
+    enhance: {
+      matrix:
+        Array.isArray(en.matrix) &&
+        en.matrix.length === 20 &&
+        en.matrix.every((v) => typeof v === 'number' && Number.isFinite(v))
+          ? (en.matrix as number[])
+          : null,
+      strength: num(en.strength, 0.6, 0, 1),
+      exportToo: bool(en.exportToo, false),
     },
   };
 }

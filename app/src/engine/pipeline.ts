@@ -13,6 +13,14 @@ export interface PipelineDeps {
   loadImage: (uri: string) => Promise<SkImage>;
   /** Persist mask PNG bytes (so it can be saved with the library item). Returns a file URI. */
   persistMask: (png: Uint8Array) => string;
+  /**
+   * Optional auto exposure / white balance: returns an enhanced copy of the working image (the model sees this one)
+   * and the colour matrix used, or null when there is nothing to change.
+   */
+  enhanceWorking?: (
+    uri: string,
+    strength: number,
+  ) => Promise<{ uri: string; matrix: number[] } | null>;
 }
 
 export interface CutoutResult {
@@ -31,6 +39,8 @@ export interface CutoutResult {
   engineId: string;
   /** False when the engine found (almost) nothing, so the UI can suggest Refine or a retry. */
   foundObject: boolean;
+  /** The auto exposure / white balance applied to what the model saw (and optionally to the export). */
+  enhance?: { matrix: number[]; strength: number };
 }
 
 export interface RunCutoutOptions {
@@ -40,6 +50,8 @@ export interface RunCutoutOptions {
   engine: ImageEngine;
   /** How tightly the edge hugs the object (default 'normal'). */
   edge?: EdgeLevel;
+  /** Auto exposure / white balance strength 0..1 (0 or missing = off). */
+  enhance?: number;
   signal?: AbortSignal;
   onProgress?: (fraction: number, label: string) => void;
 }
@@ -50,7 +62,7 @@ export interface RunCutoutOptions {
  * never the other way round, so detail is not lost to the model's low-resolution output.
  */
 export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Promise<CutoutResult> {
-  const { uri, cap, engine, signal, onProgress, edge = DEFAULT_EDGE } = opts;
+  const { uri, cap, engine, signal, onProgress, edge = DEFAULT_EDGE, enhance = 0 } = opts;
   try {
     throwIfAborted(signal);
     onProgress?.(0.02, 'Reading photo');
@@ -58,9 +70,20 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
     const prepared = photo.original;
     throwIfAborted(signal);
 
+    let workingUri = photo.working.uri;
+    let enhanced: CutoutResult['enhance'];
+    if (enhance > 0 && deps.enhanceWorking) {
+      onProgress?.(0.08, 'Improving light');
+      const e = await deps.enhanceWorking(workingUri, enhance);
+      if (e) {
+        workingUri = e.uri;
+        enhanced = { matrix: e.matrix, strength: enhance };
+      }
+      throwIfAborted(signal);
+    }
     // the model only ever sees the working copy; the mask is then brought up to the full photo size
     const mask = await engine.segment(
-      { uri: photo.working.uri, width: photo.working.width, height: photo.working.height },
+      { uri: workingUri, width: photo.working.width, height: photo.working.height },
       {
         signal,
         onProgress: (f, label) => onProgress?.(0.1 + f * 0.7, label),
@@ -109,6 +132,7 @@ export async function runCutout(opts: RunCutoutOptions, deps: PipelineDeps): Pro
       maskUri,
       engineId: engine.id,
       foundObject: maskBoundsExact(mask.alpha, mask.width, mask.height, 32) !== null,
+      ...(enhanced ? { enhance: enhanced } : {}),
       ...(photo.scaledDownFrom
         ? {
             warning: `This photo (${photo.scaledDownFrom.width}×${photo.scaledDownFrom.height}) is larger than the supported maximum, so it was scaled down to ${prepared.width}×${prepared.height}.`,

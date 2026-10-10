@@ -38,7 +38,9 @@ export function deviceBatchRunner(onUpdate?: () => void): BatchRunner {
         },
         devicePipelineDeps,
       ),
-    save: (result) => saveResultToLibrary(result, settings().workingSizeCap),
+    save: (result) =>
+      saveResultToLibrary(result, settings().workingSizeCap, settings().autoEnhance.exportToo),
+    exportEnhanced: () => settings().autoEnhance.exportToo,
     suggestionCount: (result) => {
       const src = sourceFromParts(
         result.original,

@@ -15,6 +15,8 @@ export interface ProcessDeps {
   boundsOf(result: CutoutResult): Box | null;
   preset(id: string | null): Preset | null;
   persist(rowId: string, editStateJson: string, status: 'ready' | 'needs_review'): void;
+  /** Whether auto exposure / white balance should also be applied to exports. */
+  exportEnhanced?(): boolean;
 }
 
 /**
@@ -29,7 +31,14 @@ export function makeBatchProcessor(deps: ProcessDeps): BatchDeps['processItem'] 
     if (signal.aborted) throw new Error('Cancelled');
     const row = await deps.save(result);
     const preset = deps.preset(options.presetId);
-    let edit: EditState = DEFAULT_EDIT_STATE;
+    let edit: EditState = {
+      ...DEFAULT_EDIT_STATE,
+      enhance: {
+        matrix: result.enhance?.matrix ?? null,
+        strength: result.enhance?.strength ?? DEFAULT_EDIT_STATE.enhance.strength,
+        exportToo: deps.exportEnhanced?.() ?? false,
+      },
+    };
     if (preset) edit = applyPresetToEdit(edit, preset);
     const bounds = deps.boundsOf(result);
     if (bounds) {

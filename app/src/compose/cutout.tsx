@@ -8,6 +8,8 @@ export interface CutoutSource {
   /** Final (refined) mask at photo size. */
   maskLayer: SkImage;
   patches?: readonly PhotoPatchLike[];
+  /** Auto exposure / white balance matrix to apply to the photo, when the user chose to export enhanced. */
+  colorMatrix?: readonly number[] | null;
   width: number;
   height: number;
   /** Tight bounds of the mask in photo px. */
@@ -27,6 +29,7 @@ export async function buildCutout(src: CutoutSource): Promise<ProductInputs> {
         original={src.original}
         maskLayer={src.maskLayer}
         patches={src.patches}
+        colorMatrix={src.colorMatrix}
         strokes={[]}
         width={src.width}
         height={src.height}

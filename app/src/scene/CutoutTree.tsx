@@ -1,5 +1,6 @@
 import {
   BlurMask,
+  ColorMatrix,
   FilterMode,
   Group,
   MipmapMode,
@@ -78,6 +79,8 @@ export interface CutoutTreeProps extends MaskTreeProps {
   original: SkImage;
   /** Opaque tiles drawn over the photo before the mask is applied (colour-decontaminated edges). */
   patches?: readonly PhotoPatchLike[];
+  /** Colour matrix applied to the photo (and patches) before the mask: auto exposure / white balance. */
+  colorMatrix?: readonly number[] | null;
 }
 
 /**
@@ -87,13 +90,14 @@ export interface CutoutTreeProps extends MaskTreeProps {
 export function CutoutTree({
   original,
   patches,
+  colorMatrix,
   maskLayer,
   strokes,
   width,
   height,
 }: CutoutTreeProps) {
-  return (
-    <Group layer>
+  const photo = (
+    <>
       <SkiaImage image={original} x={0} y={0} width={width} height={height} sampling={SAMPLING} />
       {patches?.map((p, i) => (
         <SkiaImage
@@ -106,6 +110,23 @@ export function CutoutTree({
           sampling={SAMPLING}
         />
       ))}
+    </>
+  );
+  return (
+    <Group layer>
+      {colorMatrix ? (
+        <Group
+          layer={
+            <Paint>
+              <ColorMatrix matrix={[...colorMatrix]} />
+            </Paint>
+          }
+        >
+          {photo}
+        </Group>
+      ) : (
+        photo
+      )}
       <Group layer={<Paint blendMode="dstIn" />}>
         <MaskTree maskLayer={maskLayer} strokes={strokes} width={width} height={height} />
       </Group>

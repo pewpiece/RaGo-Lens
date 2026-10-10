@@ -80,6 +80,7 @@ export async function toProductInputs(src: ProductSource): Promise<ProductInputs
     original: src.original,
     maskLayer: maskToImage(src.mask),
     patches: src.patches,
+    colorMatrix: src.edit.enhance.exportToo ? src.edit.enhance.matrix : null,
     width: src.width,
     height: src.height,
     bounds: src.bounds,

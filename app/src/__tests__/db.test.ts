@@ -131,9 +131,7 @@ describe('v2 migration (Phase 1.5)', () => {
     expect([r.originalWidth, r.originalHeight]).toEqual([640, 480]);
     expect(r.status).toBe('ready');
     expect(r.editStateJson).toBe('{}');
-    const tables = raw
-      .exec("SELECT name FROM sqlite_master WHERE type='table'")[0]!
-      .values.flat();
+    const tables = raw.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]!.values.flat();
     expect(tables).toEqual(expect.arrayContaining(['batches', 'batch_items', 'presets']));
   });
 });

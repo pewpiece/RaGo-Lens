@@ -212,7 +212,8 @@ export function PresetEditor({
         />
       ) : null}
       <Muted>
-        Values are starting points. Check each platform&apos;s current guidelines before relying on them.
+        Values are starting points. Check each platform&apos;s current guidelines before relying on
+        them.
       </Muted>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <Button

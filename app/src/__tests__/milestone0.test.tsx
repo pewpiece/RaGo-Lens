@@ -11,7 +11,12 @@ import { runCutout, type PipelineDeps } from '@/engine/pipeline';
 import { imageFromBytes, maskLayerFromAlpha, readAlpha } from '@/engine/skiaOps';
 import { resizeMaskBilinear } from '@/engine/postprocess';
 import type { ImageEngine } from '@/engine/types';
-import { objectBoundsOf, renderExport, renderThumbnail, type SceneInputs } from '@/scene/exportRender';
+import {
+  objectBoundsOf,
+  renderExport,
+  renderThumbnail,
+  type SceneInputs,
+} from '@/scene/exportRender';
 import { computeExportGeometry } from '@/scene/exportGeometry';
 import { writeVerifiedPng } from '@/export/actions';
 import {
@@ -38,7 +43,12 @@ jest.mock('expo-file-system', () => ({ Paths: { availableDiskSpace: 1e12 } }));
 
 const imageOf = (f: Fixture): SkImage =>
   Skia.Image.MakeImage(
-    { width: f.width, height: f.height, colorType: ColorType.RGBA_8888, alphaType: AlphaType.Unpremul },
+    {
+      width: f.width,
+      height: f.height,
+      colorType: ColorType.RGBA_8888,
+      alphaType: AlphaType.Unpremul,
+    },
     Skia.Data.fromBytes(f.rgba),
     f.width * 4,
   )!;
@@ -96,7 +106,8 @@ describe('M0.1 transparency survives the real export path', () => {
     // nothing outside the object was replaced by an opaque black fill
     let opaqueBlackOutside = 0;
     for (let i = 0; i < a.length; i++)
-      if (f.truth[i] === 0 && a[i]! > 0 && rgba[i * 4]! < 8 && rgba[i * 4 + 1]! < 8) opaqueBlackOutside++;
+      if (f.truth[i] === 0 && a[i]! > 0 && rgba[i * 4]! < 8 && rgba[i * 4 + 1]! < 8)
+        opaqueBlackOutside++;
     expect(opaqueBlackOutside).toBe(0);
   });
 
@@ -166,7 +177,13 @@ describe('M0.2 export size is the photo size, never the model working size', () 
     expect([r.original.width(), r.original.height()]).toEqual([1200, 800]);
     expect([r.maskLayer.width(), r.maskLayer.height()]).toEqual([1200, 800]);
     const out = await renderExport(
-      { original: r.original, maskLayer: r.maskLayer, strokes: [], width: r.width, height: r.height },
+      {
+        original: r.original,
+        maskLayer: r.maskLayer,
+        strokes: [],
+        width: r.width,
+        height: r.height,
+      },
       opts(),
     );
     expect([out.width, out.height]).toEqual([1200, 800]);
@@ -174,7 +191,6 @@ describe('M0.2 export size is the photo size, never the model working size', () 
   });
 
   it('a 4000x3000 export is 4000x3000 (geometry and a real render)', async () => {
-    
     const g = computeExportGeometry(4000, 3000, null, opts());
     expect([g.outWidth, g.outHeight]).toEqual([4000, 3000]);
     const px = new Uint8Array(4000 * 3000 * 4).fill(90);
@@ -210,9 +226,7 @@ describe('M0.3 auto-crop pads the object and never cuts mask pixels', () => {
 
   it('every mask pixel survives auto-crop, and the crop has padding on all sides', async () => {
     const scene = sceneOf(f);
-    const full = readAlpha(
-      (await renderExport(scene, opts())).image,
-    );
+    const full = readAlpha((await renderExport(scene, opts())).image);
     const total = full.reduce((n, v) => n + v, 0);
     const cropped = await renderExport(scene, opts({ autoCrop: true, paddingPercent: 4 }));
     const sum = readAlpha(cropped.image).reduce((n, v) => n + v, 0);
@@ -221,8 +235,11 @@ describe('M0.3 auto-crop pads the object and never cuts mask pixels', () => {
     const a = readAlpha(cropped.image);
     const W = cropped.width;
     const H = cropped.height;
-    const objectLong = Math.round(f.width * 0.7) - Math.round(f.width * 0.3) + (f.width - 5 - Math.round(f.width * 0.7));
-    const minPad = Math.floor((objectLong * 0.04) - 1);
+    const objectLong =
+      Math.round(f.width * 0.7) -
+      Math.round(f.width * 0.3) +
+      (f.width - 5 - Math.round(f.width * 0.7));
+    const minPad = Math.floor(objectLong * 0.04 - 1);
     const rowHas = (y: number) => a.slice(y * W, (y + 1) * W).some((v) => v > 0);
     const colHas = (x: number) => {
       for (let y = 0; y < H; y++) if (a[y * W + x]! > 0) return true;

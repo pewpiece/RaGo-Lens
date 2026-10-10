@@ -257,3 +257,11 @@ file is never modified). Measured in the exported PNG on a red product on green:
   `needs_review`; the cut-out itself is never changed by a finding. The review screen steps through only those (open in editor / looks fine / skip).
 - Export: file names from a template (`{name} {sku} {index} {preset}`, sanitised, unique, 80 char cap); destination is the gallery or a folder picked with the Android directory picker (`Directory.pickDirectoryAsync`). "Share as a set" is **one share sheet per file**:
   sharing several files at once on Android needs a native module this app does not have (listed in WEAKNESSES.md).
+
+## M11: capture guidance and light enhancement
+- **New native dependency: `expo-sensors@57.0.3`** (MIT, pinned). Accelerometer: level indicator (upright: roll line; flat on a table: bubble) and a steadiness meter; ambient light sensor: low-light warning (below 40 lux). Every sensor is optional: a missing one just hides its hint.
+- **What expo-camera cannot do, and what the app does instead.** It exposes no focus-point API and no frame access. So: *tap to focus* is a ring plus a request to refocus (best effort, not a point focus); *blur* and *dark/light product* are judged on the photo right after the shot
+  (or a gallery pick) on a 256 px copy (`capture/quality.ts`: 99th-percentile edge gradient for blur; centre-of-frame brightness for "Dark product? Place it on a light surface" and the reverse), shown with Retake / Use photo. No tip means no extra tap.
+  A live "centre of the frame is dark" hint would need a frame processor (a native module); it is listed in WEAKNESSES.md.
+- **Auto exposure / white balance** (`enhance/`): luma percentiles (1 % / 99 %, minimum span) and gray-world gains on mid-tones, clamped (gains 0.8-1.25, stretch <= 2.2), blended by a 0..1 strength into one 4x5 colour matrix (strength 0 = identity, tested).
+  It is applied with a Skia colour filter to the model's working copy; the matrix is saved in the edit state and applied to the exported picture only if "Also apply to the exported picture" is on.

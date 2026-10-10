@@ -1,4 +1,5 @@
 import { DEFAULT_EXPORT_OPTIONS } from '@/export/options';
+import { DEFAULT_EDIT_STATE, serializeEditState } from '@/edit/editState';
 import type { CutoutResult } from '@/engine/pipeline';
 import { renderExport, renderThumbnail, type SceneInputs } from '@/scene/exportRender';
 import { tempName, writeCacheFile } from '@/lib/files';
@@ -32,7 +33,11 @@ async function renderFiles(r: CutoutResult) {
 }
 
 /** Saves a freshly processed result to the library (private storage + SQLite). */
-export async function saveResultToLibrary(r: CutoutResult, workingCap: number): Promise<ResultRow> {
+export async function saveResultToLibrary(
+  r: CutoutResult,
+  workingCap: number,
+  exportEnhanced = false,
+): Promise<ResultRow> {
   const files = await renderFiles(r);
   return saveItem({
     mode: 'cutout',
@@ -41,6 +46,14 @@ export async function saveResultToLibrary(r: CutoutResult, workingCap: number): 
     width: r.width,
     height: r.height,
     settings: { engine: r.engineId, workingCap },
+    editStateJson: serializeEditState({
+      ...DEFAULT_EDIT_STATE,
+      enhance: {
+        matrix: r.enhance?.matrix ?? null,
+        strength: r.enhance?.strength ?? DEFAULT_EDIT_STATE.enhance.strength,
+        exportToo: exportEnhanced,
+      },
+    }),
   });
 }
 

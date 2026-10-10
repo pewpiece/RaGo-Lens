@@ -13,6 +13,7 @@ import {
   Segmented,
   Toggle,
 } from '@/components/ui';
+import { Slider } from '@/components/Slider';
 import { clearLibrary } from '@/library/library';
 import { useSettingsStore, useThemeStore } from '@/store/instances';
 import { WORKING_SIZE_CHOICES } from '@/store/settingsStore';
@@ -31,6 +32,8 @@ export default function Settings() {
   const setExp = useSettingsStore((s) => s.setExportDefaults);
   const cap = useSettingsStore((s) => s.workingSizeCap);
   const edgeLevel = useSettingsStore((s) => s.edgeLevel);
+  const autoEnhance = useSettingsStore((s) => s.autoEnhance);
+  const setAutoEnhance = useSettingsStore((s) => s.setAutoEnhance);
   const setEdgeLevel = useSettingsStore((s) => s.setEdgeLevel);
   const setCap = useSettingsStore((s) => s.setWorkingSizeCap);
   const scanScript = useSettingsStore((s) => s.scanScript);
@@ -147,6 +150,31 @@ export default function Settings() {
           options={WORKING_SIZE_CHOICES.map((v) => ({ value: v, label: String(v) }))}
         />
       </Row>
+      <Toggle
+        label="Auto exposure and white balance"
+        hint="Brightens a dim photo and removes a colour cast before the cut-out, so the model sees the product more clearly"
+        value={autoEnhance.enabled}
+        onChange={(v) => void setAutoEnhance({ enabled: v })}
+      />
+      {autoEnhance.enabled ? (
+        <>
+          <Slider
+            label="Strength"
+            value={autoEnhance.strength}
+            min={0.1}
+            max={1}
+            step={0.05}
+            onChange={(v) => void setAutoEnhance({ strength: v })}
+            format={(v) => `${Math.round(v * 100)}%`}
+          />
+          <Toggle
+            label="Also apply to the exported picture"
+            hint="Off: only the model sees the enhanced photo; the export keeps the original colours"
+            value={autoEnhance.exportToo}
+            onChange={(v) => void setAutoEnhance({ exportToo: v })}
+          />
+        </>
+      ) : null}
       <Row
         label="Cut-out edge"
         hint="Tight pulls the edge in to remove a light rim around dark objects. Applies to new cut-outs."

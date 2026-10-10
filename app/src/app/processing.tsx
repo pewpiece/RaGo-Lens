@@ -17,6 +17,7 @@ export default function Processing() {
   const capOverride = useSession((s) => s.capOverride);
   const settingsCap = useSettingsStore((s) => s.workingSizeCap);
   const edge = useSettingsStore((s) => s.edgeLevel);
+  const autoEnhance = useSettingsStore((s) => s.autoEnhance);
   const useMock = useSettingsStore((s) => s.useMockEngine);
   const [progress, setProgress] = useState(0);
   const [label, setLabel] = useState('Starting');
@@ -62,6 +63,7 @@ export default function Processing() {
             cap,
             engine: getEngine(useMock),
             edge,
+            enhance: autoEnhance.enabled ? autoEnhance.strength : 0,
             signal: controller.signal,
             onProgress: (f, l) => {
               if (controller.signal.aborted) return;
@@ -75,7 +77,7 @@ export default function Processing() {
         let itemId: string | null = null;
         let notice: string | null = null;
         try {
-          itemId = (await saveResultToLibrary(result, cap)).id;
+          itemId = (await saveResultToLibrary(result, cap, autoEnhance.exportToo)).id;
         } catch (e) {
           notice = `Not saved to your library: ${e instanceof Error ? e.message : 'unknown error'}`;
         }
@@ -89,7 +91,7 @@ export default function Processing() {
       }
     })();
     return () => controller.abort(); // leaving the screen cancels the work
-  }, [sourceUri, capOverride, settingsCap, edge, useMock, attempt]);
+  }, [sourceUri, capOverride, settingsCap, edge, autoEnhance, useMock, attempt]);
 
   const cancel = useCallback(() => {
     abort.current?.abort();
