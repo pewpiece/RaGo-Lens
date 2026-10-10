@@ -84,6 +84,14 @@ export class TiledMask {
     this.versions[index] = this.versions[index]! + 1;
   }
 
+  /** Sets every pixel to `value` (cheap: tiles become single numbers). */
+  clear(value = 0): void {
+    for (let i = 0; i < this.tiles.length; i++) {
+      this.tiles[i] = value;
+      this.versions[i] = this.versions[i]! + 1;
+    }
+  }
+
   get(x: number, y: number): number {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return 0;
     const index = this.tileIndex(Math.floor(x / TILE), Math.floor(y / TILE));

@@ -194,3 +194,28 @@ A black watch on a dark laptop gave a bad cut-out, an RGB export, a 328 px file 
 - **Edit state** (`edit/editState.ts`): transform, shadow, background, canvas, preset id, refinement settings and a mask revision as defensively-parsed JSON;
   the export is always rendered from original + mask + this state.
 - Pipeline now keeps the mask as an Alpha_8 image (1 byte/pixel) at photo size.
+
+## M2-M5: the editor (replaces Refine)
+- **Pixel work is Skia, per 512 px tile** (`editor/tileOps.ts`): the tile's coverage is drawn into a small surface, the edit is composited with a blend mode
+  (erase = dstOut, restore = srcOver, intersect = dstIn, invert = Xor with an opaque rect) and read back. Brush strokes, selections (lasso / polygon / rectangle /
+  ellipse / wand / region), add / subtract / intersect / invert, feather (blur), grow and shrink (dilate / erode image filters) all go through it. JavaScript
+  only touches pixels for the colour read-back of one tile, the analysis on the 1 MP working copy, and the matting band (below). Every change is an
+  `EditSession` step in the tile-diff history.
+- **Tap select (wand)** runs a Lab-colour flood fill on a <= 1024 px working copy (`editor/wand.ts`; tolerance, contiguous, edge-aware stop on strong colour steps,
+  "current cut-out only"). The result is upsampled to photo size and **snapped to the real edges** by the matting step on each touched tile. Measured in Node/V8
+  (not a phone number): whole-image fill on 1 MP = ~110 ms. The 300 ms target on a 12 MP photo on a phone is **unmeasured**.
+- **Matting** (`editor/matting.ts`): trimap (eroded mask = sure foreground, outside the dilated mask = sure background, band between), local foreground/background
+  colour from integral images, alpha from the colour line, trusted only when the two colours differ (a dark product on a dark scene keeps the model alpha), then
+  colour decontamination. It loops over band pixels only. Chosen over a Skia runtime shader / Kotlin module because neither could be run or tested here; the loop cost is
+  proportional to the object's perimeter, not the image area. Tested: edge error drops by more than 60 % on a blurred, oversized mask; green halo on a red object is removed.
+- **Smart brush** (`editor/smartBrush.ts`): per brush position, a flood fill confined to the brush circle collects pixels near the colour under the centre that are not behind a
+  strong edge; the stroke is multiplied by that matte. The live preview during the stroke is the plain brush; the matte is applied when the finger lifts.
+- **Clean-up suggestions** (`editor/suggest.ts`) are heuristics and are never applied silently: detached specks, attached blobs (parts that survive a morphological
+  opening as separate pieces and differ in colour or model confidence), holes (enclosed opaque pixels that match the old background colour, or that the model was
+  unsure about) and pin-holes. Tested on the strap-with-8-openings, logo-on-a-neck, dark-on-dark and solid-object fixtures.
+- **Gestures** (`editor/gestures.ts`) are a pure state machine with its own tests: one finger edits, two fingers always pan/zoom and cancel a half-drawn stroke, fingers lifting one at a time never resume drawing.
+  Double tap toggles fit / 100 % in every tool except the freehand brush and lasso (they start drawing on touch down; use Hand or the Fit control there).
+- **View modes** include removed-area-in-red, mask only, before/after (slider) and a press-and-hold "Before"; the default checkerboard contrasts with the product's brightness;
+  the last mode is remembered. Rendering was checked pixel by pixel offscreen (found and fixed two Skia pitfalls: a layer `opacity` also dims knock-outs inside it, and Alpha_8 images draw black unless used as a mask).
+- Zoom reaches 16x (1600 %); the photo is drawn from a mip chain (`editor/pyramid.ts`); a mini-map appears when zoomed in.
+- Not done in this pass: stylus hover (React Native gives no hover events without a native module).

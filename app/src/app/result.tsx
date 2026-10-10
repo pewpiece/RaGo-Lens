@@ -60,7 +60,7 @@ export default function Result() {
       {!result.foundObject ? (
         <View style={{ marginBottom: spacing.md }}>
           <Banner>
-            No clear object was found. Try Refine to paint it in, or Retry with another photo or
+            No clear object was found. Try Edit to paint it in, or Retry with another photo or
             size.
           </Banner>
         </View>
@@ -92,7 +92,7 @@ export default function Result() {
 
       <View style={{ height: spacing.lg }} />
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
-        <Button label="Refine" onPress={() => router.push('/refine')} style={{ flex: 1 }} />
+        <Button label="Edit" onPress={() => router.push('/editor')} style={{ flex: 1 }} />
         <Button label="Retry" onPress={() => setRetryOpen(true)} style={{ flex: 1 }} />
       </View>
       <View style={{ height: spacing.md }} />

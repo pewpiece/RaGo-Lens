@@ -216,3 +216,30 @@ export function encodePng(img: SkImage): Uint8Array {
   if (!bytes || bytes.length === 0) throw new Error('Could not encode PNG (out of memory?)');
   return bytes;
 }
+
+/**
+ * Rotates an image by quarter turns (positive = clockwise) and/or mirrors it. Exact pixel moves, no resampling blur.
+ * Used to fix orientation of the photo and its mask together.
+ */
+export function transformQuarter(
+  img: SkImage,
+  quarterTurns: number,
+  flipH = false,
+  flipV = false,
+): SkImage {
+  const turns = ((quarterTurns % 4) + 4) % 4;
+  const w = img.width();
+  const h = img.height();
+  const ow = turns % 2 === 0 ? w : h;
+  const oh = turns % 2 === 0 ? h : w;
+  const surface = Skia.Surface.Make(ow, oh);
+  if (!surface) throw new Error('Out of memory: could not allocate drawing surface');
+  const canvas = surface.getCanvas();
+  canvas.translate(ow / 2, oh / 2);
+  canvas.rotate(turns * 90, 0, 0);
+  canvas.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+  canvas.translate(-w / 2, -h / 2);
+  canvas.drawImage(img, 0, 0, Skia.Paint());
+  surface.flush?.();
+  return surface.makeImageSnapshot();
+}

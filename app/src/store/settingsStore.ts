@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { KeyValueStorage } from '@/db/kv';
 import { DEFAULT_EXPORT_OPTIONS, parseExportOptions, type ExportOptions } from '@/export/options';
 import { DEFAULT_EDGE, parseEdgeLevel, type EdgeLevel } from '@/engine/edge';
+import { isViewMode, type ViewMode } from '@/editor/viewModes';
 import type { ScanScript } from '@/scan/types';
 
 export const WORKING_SIZE_CHOICES = [1024, 1536, 2048, 3072] as const;
@@ -14,6 +15,7 @@ const KEYS = {
   scanScript: 'scan_script',
   scanEnhance: 'scan_enhance',
   edge: 'cutout_edge',
+  editorView: 'editor_view_mode',
 } as const;
 
 export interface SettingsState {
@@ -29,6 +31,8 @@ export interface SettingsState {
   scanEnhance: boolean;
   /** How tightly cut-out edges hug the object. */
   edgeLevel: EdgeLevel;
+  /** Last view mode used in the editor (null = pick by product brightness). */
+  editorViewMode: ViewMode | null;
   hydrate(): Promise<void>;
   setExportDefaults(patch: Partial<ExportOptions>): Promise<void>;
   setWorkingSizeCap(px: number): Promise<void>;
@@ -36,6 +40,7 @@ export interface SettingsState {
   setScanScript(script: ScanScript): Promise<void>;
   setScanEnhance(on: boolean): Promise<void>;
   setEdgeLevel(level: EdgeLevel): Promise<void>;
+  setEditorViewMode(mode: ViewMode): Promise<void>;
 }
 
 export function clampWorkingSize(px: number): number {
@@ -59,15 +64,17 @@ export function createSettingsStore(kv: KeyValueStorage) {
     scanScript: 'latin',
     scanEnhance: true,
     edgeLevel: DEFAULT_EDGE,
+    editorViewMode: null,
     async hydrate() {
       try {
-        const [exp, size, mock, script, enhance, edge] = await Promise.all([
+        const [exp, size, mock, script, enhance, edge, view] = await Promise.all([
           kv.get(KEYS.exportDefaults),
           kv.get(KEYS.workingSize),
           kv.get(KEYS.mockEngine),
           kv.get(KEYS.scanScript),
           kv.get(KEYS.scanEnhance),
           kv.get(KEYS.edge),
+          kv.get(KEYS.editorView),
         ]);
         set({
           exportDefaults: parseExportOptions(exp),
@@ -76,6 +83,7 @@ export function createSettingsStore(kv: KeyValueStorage) {
           scanScript: script === 'devanagari' ? 'devanagari' : 'latin',
           scanEnhance: enhance !== '0',
           edgeLevel: parseEdgeLevel(edge),
+          editorViewMode: isViewMode(view) ? view : null,
           hydrated: true,
         });
       } catch {
@@ -91,6 +99,10 @@ export function createSettingsStore(kv: KeyValueStorage) {
       const v = clampWorkingSize(px);
       set({ workingSizeCap: v });
       await safeSet(KEYS.workingSize, String(v));
+    },
+    async setEditorViewMode(mode) {
+      set({ editorViewMode: mode });
+      await safeSet(KEYS.editorView, mode);
     },
     async setEdgeLevel(level) {
       set({ edgeLevel: level });

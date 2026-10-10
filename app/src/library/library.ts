@@ -127,6 +127,10 @@ export function replaceItemImages(
     maskUri: string;
     editStateJson?: string;
     status?: 'ready' | 'needs_review';
+    /** A rewritten photo (after rotate/flip) and its new size. */
+    originalUri?: string;
+    width?: number;
+    height?: number;
   },
 ): ResultRow | undefined {
   const row = repo.getResult(db(), id);
@@ -137,6 +141,11 @@ export function replaceItemImages(
   const thumbNew = moveInto(dir, files.thumbUri, `${id}-thumb-${stamp}.png`);
   const maskNew = moveInto(dir, files.maskUri, `${id}-mask-${stamp}.png`);
   const old = parseSettings(row.settingsJson);
+  let originalNew: string | undefined;
+  if (files.originalUri) {
+    originalNew = moveInto(dir, files.originalUri, `${id}-original-${stamp}.jpg`);
+    safeDelete(row.originalUri);
+  }
   safeDelete(row.resultUri);
   safeDelete(row.thumbUri);
   safeDelete(maskUriOf(row) ?? '');
@@ -147,6 +156,15 @@ export function replaceItemImages(
     settingsJson: JSON.stringify({ ...old, maskUri: maskNew }),
     ...(files.editStateJson ? { editStateJson: files.editStateJson } : {}),
     ...(files.status ? { status: files.status } : {}),
+    ...(originalNew
+      ? {
+          originalUri: originalNew,
+          width: files.width ?? row.width,
+          height: files.height ?? row.height,
+          originalWidth: files.width ?? row.width,
+          originalHeight: files.height ?? row.height,
+        }
+      : {}),
   });
   return repo.getResult(db(), id);
 }

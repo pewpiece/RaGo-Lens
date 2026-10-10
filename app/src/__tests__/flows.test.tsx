@@ -312,15 +312,15 @@ describe('Result', () => {
     expect(mockReplace).toHaveBeenCalledWith('/');
   });
 
-  it('offers Refine, Retry and Export, and warns when nothing was found', async () => {
+  it('offers Edit, Retry and Export, and warns when nothing was found', async () => {
     useSession.setState({
       result: fakeResult({ foundObject: false }) as never,
       sourceUri: 'file:///p.jpg',
     });
     await render(wrap(<Result />));
     expect(screen.getByText(/No clear object was found/)).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Refine' }));
-    expect(mockPush).toHaveBeenCalledWith('/refine');
+    await fireEvent.press(screen.getByRole('button', { name: 'Edit' }));
+    expect(mockPush).toHaveBeenCalledWith('/editor');
     await fireEvent.press(screen.getByRole('button', { name: 'Export / Share' }));
     expect(mockPush).toHaveBeenCalledWith('/export');
   });

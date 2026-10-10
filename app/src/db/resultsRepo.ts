@@ -30,6 +30,9 @@ export function updateResultFiles(
       | 'status'
       | 'originalWidth'
       | 'originalHeight'
+      | 'originalUri'
+      | 'width'
+      | 'height'
     >
   >,
 ): void {
